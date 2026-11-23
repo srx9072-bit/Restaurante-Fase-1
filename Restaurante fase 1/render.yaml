@@ -1,0 +1,31 @@
+# Despliegue en Render con un solo servicio web (API + interfaz) y una base PostgreSQL.
+# Plan "free" para la prueba: la base gratuita vence a los 30 días y el servicio se duerme si no se usa.
+databases:
+  - name: restaurante-db
+    plan: free
+    databaseName: restaurante
+    user: restaurante
+
+services:
+  - type: web
+    name: restaurante-app
+    runtime: node
+    plan: free
+    buildCommand: npm --prefix frontend install --include=dev && npm --prefix frontend run build && npm --prefix backend install
+    startCommand: node backend/src/index.js
+    healthCheckPath: /api/salud
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: restaurante-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CARGAR_DATOS_EJEMPLO   # carga la carta de LESOFT la primera vez, cuando la base está vacía
+        value: "true"
+      - key: CLAVE_INICIAL          # contraseña de los usuarios de ejemplo: la escribes tú al crear el servicio
+        sync: false
+      - key: VITE_NOMBRE_RESTAURANTE
+        value: LESOFT
