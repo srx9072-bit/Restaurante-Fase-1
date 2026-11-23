@@ -119,7 +119,7 @@ export async function sembrar({ reset = false } = {}) {
     if (rows[0].total > 0) return 'La base de datos ya tiene datos. Usa "npm run seed -- --reset" para borrar todo y recargar.';
   }
 
-  const clave = (porDefecto) => bcrypt.hash(process.env.CLAVE_INICIAL || porDefecto, 10);
+  const clave = (porDefecto) => bcrypt.hash((process.env.CLAVE_INICIAL || '').trim() || porDefecto, 10);
   await insertarVarios(pool, 'usuarios', ['nombre', 'email', 'password_hash', 'rol'], [
     ['Administrador', 'admin@restaurante.com', await clave('admin123'), 'admin'],
     ['Caja', 'caja@restaurante.com', await clave('caja123'), 'cajero'],
