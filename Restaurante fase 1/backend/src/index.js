@@ -4,7 +4,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
-import { aplicarEsquema } from './db.js';
+import bcrypt from 'bcryptjs';
+import { pool, aplicarEsquema } from './db.js';
 import { crudRouter } from './routes/crud.js';
 import authRoutes from './routes/auth.js';
 import usuariosRoutes from './routes/usuarios.js';
@@ -57,6 +58,22 @@ app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
 
 await aplicarEsquema();
 if (process.env.CARGAR_DATOS_EJEMPLO === 'true') console.log(await sembrar());
+
+// Recuperación: si defines NUEVA_CLAVE_ADMIN, esa pasa a ser la clave de admin@restaurante.com
+// (la crea si no existe). Quita la variable después de entrar, para que no se repita en cada arranque.
+const nuevaClave = (process.env.NUEVA_CLAVE_ADMIN || '').trim();
+if (process.env.NUEVA_CLAVE_ADMIN) {
+  if (nuevaClave.length < 6) {
+    console.log('NUEVA_CLAVE_ADMIN debe tener al menos 6 caracteres. No se cambió nada.');
+  } else {
+    await pool.query(
+      `INSERT INTO usuarios (nombre, email, password_hash, rol)
+       VALUES ('Administrador', 'admin@restaurante.com', $1, 'admin')
+       ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, rol = 'admin', activo = TRUE`,
+      [await bcrypt.hash(nuevaClave, 10)]);
+    console.log('Clave del administrador restablecida. Quita NUEVA_CLAVE_ADMIN de las variables de entorno.');
+  }
+}
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`Listo en http://localhost:${PORT}`));
