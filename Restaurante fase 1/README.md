@@ -1,6 +1,6 @@
-# Sistema de gestión para restaurante: Fase 1
+# Sistema de gestión para restaurante
 
-Carta con disponibilidad de platos según los ingredientes en stock, inventario, proveedores, clientes, recetas y usuarios con roles.
+Carta con disponibilidad de platos según los ingredientes en stock, inventario, proveedores, clientes, recetas, usuarios con roles y pedidos.
 
 **Stack:** React + Vite + Tailwind, Node + Express, PostgreSQL.
 
@@ -61,7 +61,16 @@ Cada plato tiene una receta (cuánto lleva de cada insumo por porción). La API 
 - Si alcanzan 5 porciones o menos, aparece como **Quedan pocas**.
 - Un plato sin receta aparece como disponible.
 
-El stock cambia con "Ajustar stock" (entrada, salida o conteo). Cada cambio queda guardado en `movimientos_inventario` con el usuario que lo hizo. En la Fase 2, los pedidos descontarán el stock automáticamente.
+El stock cambia con "Ajustar stock" (entrada, salida o conteo) y también con los pedidos. Cada cambio queda guardado en `movimientos_inventario` con el usuario que lo hizo.
+
+## Pedidos (Fase 2)
+
+- **Crear** (admin y caja): se eligen los platos, con una nota por plato (por ejemplo la base de la crepa, el sabor o "sin cebolla"), y si es para mesa o para llevar. Al crearlo, los ingredientes se descuentan del inventario. Si no alcanza el stock de algo, el pedido no se crea y se explica qué falta.
+- **Estados:** Pendiente, Preparando, Listo y Entregado. Cocina avanza hasta "Listo"; entregar lo hacen caja y administrador.
+- **Cobro:** efectivo, tarjeta o transferencia. Un pedido queda finalizado cuando está entregado y pagado.
+- **Cancelar:** si el pedido sigue pendiente, los ingredientes vuelven al inventario. Si ya se empezó a preparar, no vuelven. Un pedido pagado o entregado no se cancela.
+- **"Hoy"** se calcula con la zona horaria `America/Guatemala` (se puede cambiar con la variable `ZONA_HORARIA`).
+- Las tablas nuevas se crean solas al iniciar el servidor; los datos que ya existen no se tocan.
 
 ## Estructura
 
