@@ -8,6 +8,7 @@ databases:
 
 services:
   - type: web
+    rootDir: Restaurante fase 1
     name: restaurante-app
     runtime: node
     plan: free
