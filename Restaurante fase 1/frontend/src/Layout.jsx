@@ -1,10 +1,11 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { UtensilsCrossed, Package, BookOpen, Truck, Users, ShieldCheck, LogOut } from 'lucide-react';
+import { ClipboardList, UtensilsCrossed, Package, BookOpen, Truck, Users, ShieldCheck, LogOut } from 'lucide-react';
 import { useAuth } from './auth.jsx';
 import { NOMBRE } from './ui.jsx';
 
 const ENLACES = [
   { a: '/', texto: 'Carta', icono: UtensilsCrossed },
+  { a: '/pedidos', texto: 'Pedidos', icono: ClipboardList },
   { a: '/inventario', texto: 'Inventario', icono: Package },
   { a: '/platos', texto: 'Platos y recetas', corto: 'Platos', icono: BookOpen, admin: true },
   { a: '/proveedores', texto: 'Proveedores', corto: 'Proveedores', icono: Truck },

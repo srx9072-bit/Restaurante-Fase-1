@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { X, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
+import { X, CheckCircle2, AlertTriangle, XCircle, Circle } from 'lucide-react';
 
 export const NOMBRE = import.meta.env.VITE_NOMBRE_RESTAURANTE || 'Mi restaurante';
 
@@ -13,11 +13,13 @@ const tonos = {
   verde: ['bg-hoja-suave text-hoja-oscuro', CheckCircle2],
   ambar: ['bg-maiz-suave text-maiz', AlertTriangle],
   rojo: ['bg-aji-suave text-aji', XCircle],
+  gris: ['bg-fondo text-tenue border border-borde', Circle],
 };
 
 // Etiqueta con icono y texto: el estado nunca depende solo del color
-export function Etiqueta({ tono, children }) {
-  const [clase, Icono] = tonos[tono];
+export function Etiqueta({ tono, icono, children }) {
+  const [clase, IconoBase] = tonos[tono];
+  const Icono = icono || IconoBase;
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold ${clase}`}>
       <Icono size={16} aria-hidden="true" />

@@ -68,3 +68,31 @@ CREATE TABLE IF NOT EXISTS plato_ingredientes (
   cantidad NUMERIC(10,3) NOT NULL,
   PRIMARY KEY (plato_id, insumo_id)
 );
+
+-- ===== Fase 2: pedidos =====
+CREATE TABLE IF NOT EXISTS pedidos (
+  id SERIAL PRIMARY KEY,
+  tipo VARCHAR(10) NOT NULL DEFAULT 'mesa' CHECK (tipo IN ('mesa', 'llevar')),
+  referencia VARCHAR(60),                      -- número de mesa o nombre de quien recoge
+  cliente_id INT REFERENCES clientes(id) ON DELETE SET NULL,
+  estado VARCHAR(12) NOT NULL DEFAULT 'pendiente'
+    CHECK (estado IN ('pendiente', 'preparando', 'listo', 'entregado', 'cancelado')),
+  total NUMERIC(10,2) NOT NULL DEFAULT 0,
+  pagado BOOLEAN NOT NULL DEFAULT FALSE,
+  metodo_pago VARCHAR(15) CHECK (metodo_pago IN ('efectivo', 'tarjeta', 'transferencia')),
+  pagado_en TIMESTAMPTZ,
+  usuario_id INT REFERENCES usuarios(id) ON DELETE SET NULL,
+  creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS pedidos_creado_idx ON pedidos (creado_en);
+
+-- Cada línea guarda el nombre y el precio del momento, así un cambio de precio no altera pedidos viejos
+CREATE TABLE IF NOT EXISTS pedido_items (
+  id SERIAL PRIMARY KEY,
+  pedido_id INT NOT NULL REFERENCES pedidos(id) ON DELETE CASCADE,
+  plato_id INT REFERENCES platos(id) ON DELETE SET NULL,
+  nombre VARCHAR(120) NOT NULL,
+  precio NUMERIC(10,2) NOT NULL,
+  cantidad INT NOT NULL CHECK (cantidad > 0),
+  nota VARCHAR(255)
+);
