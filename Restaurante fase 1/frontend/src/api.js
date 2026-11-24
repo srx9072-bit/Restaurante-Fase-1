@@ -18,10 +18,10 @@ export async function api(ruta, { method = 'GET', body } = {}) {
   }
   let datos = null;
   try { datos = await res.json(); } catch { /* sin cuerpo */ }
-  if (res.status === 401 && ruta !== '/auth/login') {
+  if (res.status === 401 && !ruta.startsWith('/auth/')) {
     salir();
     throw new Error(datos?.error || 'Tu sesión venció.');
   }
-  if (!res.ok) throw new Error(datos?.error || 'No se pudo completar la acción.');
+  if (!res.ok) throw Object.assign(new Error(datos?.error || 'No se pudo completar la acción.'), { datos });
   return datos;
 }

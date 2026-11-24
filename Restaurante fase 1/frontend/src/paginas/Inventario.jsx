@@ -3,7 +3,7 @@ import { PackagePlus } from 'lucide-react';
 import { api } from '../api';
 import CrudPage from '../CrudPage.jsx';
 import { useAuth } from '../auth.jsx';
-import { Aviso, Campo, Etiqueta, Modal, btnPrimario, btnSecundario, campo, num } from '../ui.jsx';
+import { Aviso, Campo, Etiqueta, Modal, btnPrimario, btnSecundario, campo, dinero, num } from '../ui.jsx';
 
 const UNIDADES = ['unidad', 'lb', 'kg', 'litro', 'galón'].map((u) => ({ valor: u, texto: u }));
 
@@ -76,6 +76,7 @@ function AjusteStock({ insumo, onHecho }) {
 
 export default function Inventario() {
   const { usuario } = useAuth();
+  const esAdmin = usuario.rol === 'admin';
   const [proveedores, setProveedores] = useState(null);
   useEffect(() => { api('/proveedores').then(setProveedores).catch(() => setProveedores([])); }, []);
   if (!proveedores) return <p className="text-tenue">Cargando...</p>;
@@ -94,6 +95,8 @@ export default function Inventario() {
         { name: 'stock', label: 'Cantidad que hay ahora', type: 'number', soloCrear: true, defecto: 0,
           ayuda: 'Después la cambias con "Ajustar stock".' },
         { name: 'stock_minimo', label: 'Avisar cuando quede menos de', type: 'number', defecto: 0 },
+        { name: 'costo', label: 'Costo por unidad de medida (Q)', type: 'number', defecto: 0,
+          ayuda: 'Lo que pagas por 1 unidad, 1 lb, 1 litro... Ej: si la libra de carne cuesta Q32, escribe 32. Sirve para saber cuánto cuesta hacer cada plato.' },
         { name: 'proveedor_id', label: 'Proveedor', type: 'select',
           opciones: proveedores.map((p) => ({ valor: p.id, texto: p.nombre })) },
       ]}
@@ -102,6 +105,9 @@ export default function Inventario() {
         { key: 'stock', label: 'Hay', render: (f) => <span className="font-bold whitespace-nowrap">{num(f.stock)} {f.unidad}</span> },
         { key: 'estado', label: 'Estado', render: (f) => <Estado f={f} /> },
         { key: 'stock_minimo', label: 'Mínimo', render: (f) => `${num(f.stock_minimo)} ${f.unidad}` },
+        ...(esAdmin ? [{ key: 'costo', label: 'Costo', render: (f) => (Number(f.costo) > 0
+          ? <span className="whitespace-nowrap">{dinero(f.costo)} / {f.unidad}</span>
+          : <span className="text-aji font-semibold whitespace-nowrap">Sin costo</span>) }] : []),
         { key: 'proveedor', label: 'Proveedor' },
       ]}
     />

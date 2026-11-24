@@ -14,6 +14,7 @@ export function auth(req, res, next) {
   if (!token) return res.status(401).json({ error: 'Inicia sesión para continuar.' });
   try {
     req.usuario = jwt.verify(token, process.env.JWT_SECRET);
+    if (!req.usuario.id) throw new Error('no es una sesión de usuario'); // p. ej. el permiso de un dispositivo
     next();
   } catch {
     res.status(401).json({ error: 'Tu sesión venció. Inicia sesión de nuevo.' });

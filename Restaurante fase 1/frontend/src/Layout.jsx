@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { ClipboardList, UtensilsCrossed, Package, BookOpen, Truck, Users, ShieldCheck, LogOut, Coffee, Armchair, Wallet, TrendingUp } from 'lucide-react';
+import { ClipboardList, UtensilsCrossed, Package, BookOpen, Truck, Users, ShieldCheck, LogOut, Coffee, Armchair, Wallet, TrendingUp, UserRoundCog } from 'lucide-react';
 import { useAuth } from './auth.jsx';
 import { NOMBRE } from './ui.jsx';
 
@@ -19,7 +19,11 @@ const ENLACES = [
 const ROL = { admin: 'Administrador', cajero: 'Caja', cocina: 'Cocina' };
 
 export default function Layout() {
-  const { usuario, salir } = useAuth();
+  const { usuario, salir, conPin } = useAuth();
+  // En la computadora de caja (autorizada para PIN) el botón sirve para pasarle el turno a otra persona
+  const IconoSalir = conPin ? UserRoundCog : LogOut;
+  const textoSalir = conPin ? 'Cambiar de usuario' : 'Salir';
+  const textoCorto = conPin ? 'Cambiar' : 'Salir';
   const enlaces = ENLACES.filter((e) => !e.roles || e.roles.includes(usuario.rol));
 
   return (
@@ -41,7 +45,7 @@ export default function Layout() {
           <p className="font-bold">{usuario.nombre}</p>
           <p className="text-sm text-[#D9C3A8] mb-3">{ROL[usuario.rol]}</p>
           <button onClick={salir} className="flex items-center gap-2 font-bold text-[#D9C3A8] hover:text-white">
-            <LogOut size={18} aria-hidden="true" /> Salir
+            <IconoSalir size={18} aria-hidden="true" /> {textoSalir}
           </button>
         </div>
       </aside>
@@ -49,7 +53,7 @@ export default function Layout() {
       <div className="flex-1 min-w-0 pb-24 md:pb-0">
         <header className="md:hidden flex items-center justify-between bg-cafe-espresso text-[#F3E4D0] px-4 h-14">
           <h1 className="font-bold flex items-center gap-2"><Coffee size={20} aria-hidden="true" /> {NOMBRE}</h1>
-          <button onClick={salir} className="flex items-center gap-1 font-bold text-[#D9C3A8]"><LogOut size={18} aria-hidden="true" /> Salir</button>
+          <button onClick={salir} className="flex items-center gap-1 font-bold text-[#D9C3A8]"><IconoSalir size={18} aria-hidden="true" /> {textoCorto}</button>
         </header>
         <main className="max-w-6xl mx-auto p-4 sm:p-6"><Outlet /></main>
       </div>

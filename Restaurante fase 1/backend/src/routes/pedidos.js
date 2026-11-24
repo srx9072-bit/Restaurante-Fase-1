@@ -118,7 +118,11 @@ r.post('/', roles('admin', 'cajero'), asyncH(async (req, res) => {
     const { rows: platos } = await db.query('SELECT id, nombre, precio FROM platos WHERE id = ANY($1) AND activo = TRUE', [ids]);
     if (platos.length !== ids.length) throw falla(400, 'Alguno de los platos ya no está en la carta. Actualiza e inténtalo de nuevo.');
     const porId = new Map(platos.map((p) => [p.id, p]));
-    const { rows: rec } = await db.query('SELECT plato_id, insumo_id, cantidad FROM plato_ingredientes WHERE plato_id = ANY($1)', [ids]);
+    const { rows: rec } = await db.query(
+      `SELECT x.plato_id, x.insumo_id, x.cantidad, i.costo
+       FROM plato_ingredientes x JOIN insumos i ON i.id = x.insumo_id WHERE x.plato_id = ANY($1)`, [ids]);
+    // Costo de ingredientes de una porción, con los costos de hoy (así los reportes no cambian si después sube un insumo)
+    const costoPorcion = (platoId) => rec.filter((x) => x.plato_id === platoId).reduce((s, x) => s + Number(x.cantidad) * Number(x.costo), 0);
 
     const necesario = new Map();
     for (const l of lineas) {
@@ -143,10 +147,10 @@ r.post('/', roles('admin', 'cajero'), asyncH(async (req, res) => {
       `INSERT INTO pedidos (tipo, referencia, cliente_id, total, usuario_id, zona_envio, costo_envio, direccion, telefono, mesa_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
       [tipo, referencia, clienteId, total, req.usuario.id, zona, costoEnvio, direccion, telefono, mesaId]);
-    await insertarVarios(db, 'pedido_items', ['pedido_id', 'plato_id', 'nombre', 'precio', 'cantidad', 'nota'],
+    await insertarVarios(db, 'pedido_items', ['pedido_id', 'plato_id', 'nombre', 'precio', 'cantidad', 'nota', 'costo'],
       lineas.map((l) => {
         const p = porId.get(Number(l.plato_id));
-        return [ped.id, p.id, p.nombre, p.precio, Number(l.cantidad), String(l.nota || '').trim().slice(0, 255) || null];
+        return [ped.id, p.id, p.nombre, p.precio, Number(l.cantidad), String(l.nota || '').trim().slice(0, 255) || null, costoPorcion(p.id)];
       }));
     await registrarMovimientos(db, cambios, -1, `Pedido #${ped.id}`, req.usuario.id);
     return { id: ped.id, total };

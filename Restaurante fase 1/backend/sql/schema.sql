@@ -144,3 +144,8 @@ CREATE TABLE IF NOT EXISTS caja_movimientos (
 
 ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS mesa_id INT REFERENCES mesas(id) ON DELETE SET NULL;
 ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS caja_id INT REFERENCES cajas(id) ON DELETE SET NULL;  -- caja en la que se cobró
+
+-- ===== PIN para cambiar de usuario rápido y costos de los ingredientes =====
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS pin_hash VARCHAR(255);           -- PIN de 4 dígitos (cifrado)
+ALTER TABLE insumos ADD COLUMN IF NOT EXISTS costo NUMERIC(12,4) NOT NULL DEFAULT 0;  -- lo que cuesta 1 unidad de medida (Q por lb, por litro...)
+ALTER TABLE pedido_items ADD COLUMN IF NOT EXISTS costo NUMERIC(12,4);         -- costo de ingredientes de 1 porción el día del pedido

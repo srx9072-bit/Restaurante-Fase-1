@@ -1,10 +1,10 @@
 import { createPortal } from 'react-dom';
 import { Printer } from 'lucide-react';
-import { Modal, NOMBRE, btnPrimario, btnSecundario, dinero, fechaHora } from './ui.jsx';
+import { Modal, NOMBRE, btnPrimario, btnSecundario, dinero, fechaHora, imprimirTicket } from './ui.jsx';
 
 function Contenido({ c }) {
   const linea = <div className="border-t border-dashed border-black my-2" />;
-  const fila = (t, v, fuerte) => <div className={`flex justify-between gap-2 ${fuerte ? 'font-extrabold text-base' : ''}`}><span>{t}</span><span>{v}</span></div>;
+  const fila = (t, v, fuerte) => <div className={`flex justify-between gap-2 ${fuerte ? 'font-extrabold text-base' : ''}`}><span>{t}</span><span className="shrink-0">{v}</span></div>;
   const cerrada = c.estado === 'cerrada';
   const dif = Number(c.diferencia) || 0;
   return (
@@ -46,7 +46,7 @@ export default function ReporteCaja({ caja, onClose }) {
         <div className="rounded-xl border border-borde bg-white p-3 mb-4"><Contenido c={caja} /></div>
         <div className="flex gap-2 justify-end">
           <button className={btnSecundario} onClick={onClose}>Cerrar</button>
-          <button className={btnPrimario} onClick={() => window.print()}><Printer size={18} aria-hidden="true" /> Imprimir</button>
+          <button className={btnPrimario} onClick={imprimirTicket}><Printer size={18} aria-hidden="true" /> Imprimir</button>
         </div>
       </Modal>
       {createPortal(<div className="solo-impresion"><Contenido c={caja} /></div>, document.body)}

@@ -75,3 +75,16 @@ export const METODOS_PAGO = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transfer
 export const fechaHora = (iso) => new Date(iso).toLocaleString('es-GT', {
   timeZone: 'America/Guatemala', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
 });
+
+// Imprime el ticket que está en pantalla (.solo-impresion) en una hoja de 58 mm de ancho
+// y tan larga como el contenido, para no gastar papel de más en la impresora térmica.
+export function imprimirTicket() {
+  const ticket = document.querySelector('.solo-impresion');
+  const largo = ticket ? Math.ceil((ticket.getBoundingClientRect().height * 25.4) / 96) + 6 : 150; // px a mm, + margen para el corte
+  const estilo = document.createElement('style');
+  estilo.textContent = `@page { size: 58mm ${largo}mm; margin: 0; }`;
+  document.head.appendChild(estilo);
+  const quitar = () => { estilo.remove(); window.removeEventListener('afterprint', quitar); };
+  window.addEventListener('afterprint', quitar);
+  window.print();
+}

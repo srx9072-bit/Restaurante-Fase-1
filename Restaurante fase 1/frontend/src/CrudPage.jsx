@@ -141,6 +141,7 @@ export default function CrudPage({ titulo, intro, singular, endpoint, campos, co
                 ) : (
                   <input className={campo} type={c.type || 'text'} step={c.type === 'number' ? 'any' : undefined} min={c.type === 'number' ? 0 : undefined}
                          autoComplete={c.type === 'password' ? 'new-password' : 'off'}
+                         inputMode={c.inputMode} maxLength={c.maxLength} pattern={c.pattern} title={c.title}
                          value={form[c.name]} onChange={(e) => setForm({ ...form, [c.name]: e.target.value })} />
                 )}
               </Campo>

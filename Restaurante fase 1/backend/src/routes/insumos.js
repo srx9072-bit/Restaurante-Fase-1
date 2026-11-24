@@ -4,10 +4,10 @@ import { crudRouter } from './crud.js';
 
 const r = crudRouter({
   tabla: 'insumos',
-  campos: ['nombre', 'unidad', 'stock', 'stock_minimo', 'proveedor_id'],
-  camposEditar: ['nombre', 'unidad', 'stock_minimo', 'proveedor_id'], // el stock solo cambia con movimientos
+  campos: ['nombre', 'unidad', 'stock', 'stock_minimo', 'costo', 'proveedor_id'],
+  camposEditar: ['nombre', 'unidad', 'stock_minimo', 'costo', 'proveedor_id'], // el stock solo cambia con movimientos
   requeridos: { nombre: 'el nombre del insumo', unidad: 'la unidad de medida' },
-  numericos: ['stock', 'stock_minimo'],
+  numericos: ['stock', 'stock_minimo', 'costo'],
   escribir: ['admin'],
   listarSql: `SELECT i.*, p.nombre AS proveedor FROM insumos i
               LEFT JOIN proveedores p ON p.id = i.proveedor_id

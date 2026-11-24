@@ -7,13 +7,15 @@ r.use(auth);
 r.param('id', validarId);
 
 const EPS = 1e-9; // evita errores de redondeo con decimales
+const r2 = (n) => Math.round(n * 100) / 100;
 
 // Devuelve los platos con su receta y si se pueden servir según el stock actual
-async function cargarPlatos() {
+// Los costos y ganancias solo los ve el administrador
+async function cargarPlatos(verCostos = false) {
   const { rows: platos } = await pool.query(
     'SELECT id, nombre, descripcion, categoria, precio FROM platos WHERE activo = TRUE ORDER BY categoria, nombre');
   const { rows: rec } = await pool.query(
-    `SELECT pi.plato_id, pi.insumo_id, pi.cantidad, i.nombre, i.unidad, i.stock, i.activo
+    `SELECT pi.plato_id, pi.insumo_id, pi.cantidad, i.nombre, i.unidad, i.stock, i.activo, i.costo
      FROM plato_ingredientes pi JOIN insumos i ON i.id = pi.insumo_id`);
 
   return platos.map((p) => {
@@ -22,12 +24,20 @@ async function cargarPlatos() {
       .map((x) => ({
         insumo_id: x.insumo_id, nombre: x.nombre, unidad: x.unidad,
         cantidad: Number(x.cantidad), stock: x.activo ? Number(x.stock) : 0,
+        ...(verCostos ? { costo_unitario: Number(x.costo), costo: r2(Number(x.cantidad) * Number(x.costo)) } : {}),
       }));
     const faltantes = ingredientes.filter((i) => i.stock + EPS < i.cantidad);
     const porciones = ingredientes.length
       ? Math.min(...ingredientes.map((i) => Math.floor(i.stock / i.cantidad + EPS)))
       : null; // sin receta: no se puede calcular
-    return { ...p, precio: Number(p.precio), ingredientes, faltantes, porciones, disponible: faltantes.length === 0 };
+    const plato = { ...p, precio: Number(p.precio), ingredientes, faltantes, porciones, disponible: faltantes.length === 0 };
+    if (verCostos) {
+      plato.costo = r2(ingredientes.reduce((s, i) => s + Number(i.cantidad) * Number(i.costo_unitario), 0));
+      plato.ganancia = r2(plato.precio - plato.costo);
+      plato.margen = plato.precio > 0 ? Math.round((plato.ganancia / plato.precio) * 1000) / 10 : null; // % del precio
+      plato.sin_costo = ingredientes.filter((i) => !(i.costo_unitario > 0)).map((i) => i.nombre); // ingredientes sin costo cargado
+    }
+    return plato;
   });
 }
 
@@ -60,7 +70,7 @@ async function guardarReceta(db, platoId, ingredientes) {
     ingredientes.map(([insumo, cant]) => [platoId, insumo, cant]));
 }
 
-r.get('/', asyncH(async (req, res) => res.json(await cargarPlatos())));
+r.get('/', asyncH(async (req, res) => res.json(await cargarPlatos(req.usuario.rol === 'admin'))));
 
 r.post('/', roles('admin'), asyncH(async (req, res) => {
   const p = leerPlato(req.body);

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Receipt, ShoppingBag, TrendingUp, XCircle } from 'lucide-react';
+import { Receipt, ShoppingBag, TrendingUp, XCircle, Wheat, PiggyBank, Trash2, Scale } from 'lucide-react';
 import { api } from '../api';
 import { Aviso, METODOS_PAGO, campo, dinero, num } from '../ui.jsx';
 
@@ -13,6 +13,7 @@ const hoy = () => new Intl.DateTimeFormat('en-CA', { timeZone: ZONA }).format(ne
 const sumarDias = (f, n) => new Date(Date.parse(`${f}T12:00:00Z`) + n * 864e5).toISOString().slice(0, 10);
 const diaCorto = (f) => { const d = new Date(`${f}T12:00:00Z`); return `${DIAS[d.getUTCDay()]} ${d.getUTCDate()}`; };
 const fechaLarga = (f) => { const d = new Date(`${f}T12:00:00Z`); return `${d.getUTCDate()} ${MESES[d.getUTCMonth()]} ${d.getUTCFullYear()}`; };
+const pct = (n) => `${Number(n).toLocaleString('es-GT', { maximumFractionDigits: 1 })}%`;
 const horaTexto = (h) => `${h % 12 === 0 ? 12 : h % 12}:00 ${h < 12 ? 'a. m.' : 'p. m.'}`;
 
 const PERIODOS = [
@@ -144,6 +145,22 @@ export default function Reportes() {
             <Dato icono={XCircle} titulo="Pedidos cancelados" valor={num(r.cancelados)} detalle={r.envios ? `Envíos cobrados: ${dinero(r.envios)}` : undefined} />
           </div>
 
+          <section className="space-y-3">
+            <div>
+              <h3 className="text-xl font-bold">Ganancias y pérdidas</h3>
+              <p className="text-sm text-tenue">Sobre el costo de los ingredientes. No incluye sueldos, alquiler, luz ni gas.</p>
+            </div>
+            {r.platos_sin_costo > 0 && (
+              <Aviso tipo="error">{r.platos_sin_costo === 1 ? '1 plato vendido tiene' : `${r.platos_sin_costo} platos vendidos tienen`} ingredientes sin costo. Agrega el costo de cada ingrediente en Inventario para que la ganancia sea real.</Aviso>
+            )}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Dato icono={Receipt} titulo="Venta de platos" valor={dinero(r.ventas_platos)} detalle={r.envios ? 'Sin contar los envíos' : undefined} />
+              <Dato icono={Wheat} titulo="Costo de ingredientes" valor={dinero(r.costo)} detalle={r.ventas_platos ? `${pct((r.costo / r.ventas_platos) * 100)} de lo vendido` : undefined} />
+              <Dato icono={Trash2} titulo="Pérdidas por mermas" valor={dinero(r.perdidas)} detalle="Insumos botados, vencidos o dañados" />
+              <Dato fuerte icono={PiggyBank} titulo="Ganancia" valor={dinero(r.ganancia_neta)} detalle={r.margen !== null ? `Venta − costo − pérdidas · ${pct((r.ganancia_neta / r.ventas_platos) * 100)}` : 'Venta − costo − pérdidas'} />
+            </div>
+          </section>
+
           {!unDia && (
             <section className="tarjeta p-4 space-y-3">
               <h3 className="text-xl font-bold">Ventas por día</h3>
@@ -154,8 +171,9 @@ export default function Reportes() {
           <div className="grid gap-4 lg:grid-cols-2">
             <section className="tarjeta p-4 space-y-3">
               <h3 className="text-xl font-bold">Platos más vendidos</h3>
+              <p className="text-sm text-tenue">Cantidad vendida · venta · ganancia sobre ingredientes.</p>
               <Barras filas={datos.platos} valor={(f) => f.cantidad} etiqueta={(f) => f.nombre}
-                      texto={(f) => `${num(f.cantidad)} · ${dinero(f.total)}`} vacio="No hay ventas en este período." />
+                      texto={(f) => `${num(f.cantidad)} · ${dinero(f.total)} · gana ${dinero(f.ganancia)}`} vacio="No hay ventas en este período." />
             </section>
             <section className="tarjeta p-4 space-y-3">
               <h3 className="text-xl font-bold">Pedidos por hora</h3>
@@ -164,6 +182,22 @@ export default function Reportes() {
                       texto={(f) => `${f.pedidos} · ${dinero(f.total)}`} vacio="No hay ventas en este período." />
             </section>
           </div>
+
+          <section className="tarjeta p-4 space-y-2">
+            <h3 className="text-xl font-bold flex items-center gap-2"><Scale size={20} aria-hidden="true" /> Mermas del período</h3>
+            <p className="text-sm text-tenue">Lo que se sacó del inventario con "Salió o se botó", valorado al costo actual de cada ingrediente.</p>
+            {datos.mermas.length === 0 ? <p className="text-tenue">No hubo mermas registradas.</p> : (
+              <table className="w-full text-left">
+                <thead className="text-sm text-tenue"><tr><th className="py-2">Ingrediente</th><th className="py-2 text-right">Cantidad</th><th className="py-2 text-right">Pérdida</th></tr></thead>
+                <tbody className="divide-y divide-borde">
+                  {datos.mermas.map((m) => (
+                    <tr key={m.nombre}><td className="py-2 font-bold">{m.nombre}</td><td className="py-2 text-right whitespace-nowrap">{num(m.cantidad)} {m.unidad}</td>
+                      <td className="py-2 text-right font-bold text-aji">{m.costo > 0 ? dinero(m.costo) : 'Sin costo'}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
 
           <div className="grid gap-4 lg:grid-cols-3">
             <section className="tarjeta p-4 space-y-2">

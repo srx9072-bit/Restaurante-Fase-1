@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom';
 import { Printer } from 'lucide-react';
-import { METODOS_PAGO, Modal, NOMBRE, ZONAS, btnPrimario, btnSecundario, dinero, fechaHora } from './ui.jsx';
+import { METODOS_PAGO, Modal, NOMBRE, ZONAS, btnPrimario, btnSecundario, dinero, fechaHora, imprimirTicket } from './ui.jsx';
 
 function Contenido({ p }) {
   const envio = Number(p.costo_envio) || 0;
@@ -8,7 +8,7 @@ function Contenido({ p }) {
   const lugar = p.tipo === 'domicilio' ? 'A domicilio' : p.tipo === 'llevar' ? 'Para llevar' : (p.mesa || 'Mesa');
   const linea = <div className="border-t border-dashed border-black my-2" />;
   const fila = (texto, valor, fuerte) => (
-    <div className={`flex justify-between gap-2 ${fuerte ? 'text-base font-extrabold' : ''}`}><span>{texto}</span><span>{valor}</span></div>
+    <div className={`flex justify-between gap-2 ${fuerte ? 'text-base font-extrabold' : ''}`}><span>{texto}</span><span className="shrink-0">{valor}</span></div>
   );
 
   return (
@@ -64,7 +64,7 @@ export default function Recibo({ pedido, onClose }) {
         <div className="rounded-lg border border-borde bg-white p-3 mb-4"><Contenido p={pedido} /></div>
         <div className="flex gap-2 justify-end">
           <button className={btnSecundario} onClick={onClose}>Cerrar</button>
-          <button className={btnPrimario} onClick={() => window.print()}><Printer size={18} aria-hidden="true" /> Imprimir</button>
+          <button className={btnPrimario} onClick={imprimirTicket}><Printer size={18} aria-hidden="true" /> Imprimir</button>
         </div>
         <p className="text-sm text-tenue mt-3">Para guardarlo como PDF, elige "Guardar como PDF" en la ventana de impresión.</p>
       </Modal>
