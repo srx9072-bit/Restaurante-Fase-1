@@ -67,7 +67,7 @@ export default function Platos() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-3xl font-extrabold">Platos y recetas</h2>
+          <h2 className="text-3xl font-bold">Platos y recetas</h2>
           <p className="text-tenue text-lg">Lo que vendes y qué ingredientes lleva cada porción.</p>
         </div>
         <button className={btnPrimario} onClick={() => { setErrForm(''); setEditando(VACIO); }}>

@@ -54,10 +54,11 @@ async function registrarMovimientos(db, cambios, signo, nota, usuarioId) {
 async function cargarPedidos(condicion, params, orden) {
   const { rows: pedidos } = await pool.query(
     `SELECT p.id, p.tipo, p.referencia, p.estado, p.total, p.pagado, p.metodo_pago, p.pagado_en, p.creado_en,
-            p.zona_envio, p.costo_envio, p.direccion, p.telefono, p.recibido, p.cambio, p.cliente_id, c.nombre AS cliente, u.nombre AS atendio
+            p.zona_envio, p.costo_envio, p.direccion, p.telefono, p.recibido, p.cambio, p.cliente_id, c.nombre AS cliente, u.nombre AS atendio, p.mesa_id, m.nombre AS mesa
      FROM pedidos p
      LEFT JOIN clientes c ON c.id = p.cliente_id
      LEFT JOIN usuarios u ON u.id = p.usuario_id
+     LEFT JOIN mesas m ON m.id = p.mesa_id
      WHERE ${condicion} ORDER BY p.creado_en ${orden}`, params);
   if (!pedidos.length) return [];
   const { rows: items } = await pool.query(
@@ -92,6 +93,8 @@ r.post('/', roles('admin', 'cajero'), asyncH(async (req, res) => {
   if (clienteId !== null && !Number.isInteger(clienteId)) throw falla(400, 'El cliente no es válido.');
   const lineas = Array.isArray(b.items) ? b.items : [];
   if (!lineas.length) throw falla(400, 'Agrega al menos un plato al pedido.');
+  const mesaId = tipo === 'mesa' && b.mesa_id ? Number(b.mesa_id) : null;
+  if (mesaId !== null && !Number.isInteger(mesaId)) throw falla(400, 'La mesa no es válida.');
   let zona = null, costoEnvio = 0, direccion = null, telefono = null;
   if (tipo === 'domicilio') {
     if (!Object.hasOwn(ENVIO, b.zona)) throw falla(400, 'Elige la zona de entrega.');
@@ -130,12 +133,16 @@ r.post('/', roles('admin', 'cajero'), asyncH(async (req, res) => {
       const { rowCount } = await db.query('SELECT 1 FROM clientes WHERE id = $1 AND activo = TRUE', [clienteId]);
       if (!rowCount) throw falla(400, 'El cliente elegido ya no existe.');
     }
+    if (mesaId !== null) {
+      const { rowCount } = await db.query('SELECT 1 FROM mesas WHERE id = $1 AND activo = TRUE', [mesaId]);
+      if (!rowCount) throw falla(400, 'La mesa elegida ya no existe.');
+    }
     const cambios = await ajustarStock(db, necesario, -1);
 
     const { rows: [ped] } = await db.query(
-      `INSERT INTO pedidos (tipo, referencia, cliente_id, total, usuario_id, zona_envio, costo_envio, direccion, telefono)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-      [tipo, referencia, clienteId, total, req.usuario.id, zona, costoEnvio, direccion, telefono]);
+      `INSERT INTO pedidos (tipo, referencia, cliente_id, total, usuario_id, zona_envio, costo_envio, direccion, telefono, mesa_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+      [tipo, referencia, clienteId, total, req.usuario.id, zona, costoEnvio, direccion, telefono, mesaId]);
     await insertarVarios(db, 'pedido_items', ['pedido_id', 'plato_id', 'nombre', 'precio', 'cantidad', 'nota'],
       lineas.map((l) => {
         const p = porId.get(Number(l.plato_id));
@@ -168,6 +175,8 @@ r.post('/:id/pago', roles('admin', 'cajero'), asyncH(async (req, res) => {
   const { rows } = await pool.query('SELECT total FROM pedidos WHERE id = $1', [req.params.id]);
   if (!rows[0]) throw falla(404, 'No se encontró el pedido.');
   const total = Number(rows[0].total);
+  const { rows: cajas } = await pool.query("SELECT id FROM cajas WHERE estado = 'abierta'");
+  if (!cajas[0]) throw falla(409, 'La caja está cerrada. Ábrela para poder cobrar.');
 
   let recibido = null, cambio = null;
   if (metodo === 'efectivo') {
@@ -179,8 +188,8 @@ r.post('/:id/pago', roles('admin', 'cajero'), asyncH(async (req, res) => {
     cambio = r2(recibido - total);
   }
   const rs = await pool.query(
-    `UPDATE pedidos SET pagado = TRUE, metodo_pago = $1, pagado_en = NOW(), recibido = $2, cambio = $3
-     WHERE id = $4 AND pagado = FALSE AND estado <> 'cancelado'`, [metodo, recibido, cambio, req.params.id]);
+    `UPDATE pedidos SET pagado = TRUE, metodo_pago = $1, pagado_en = NOW(), recibido = $2, cambio = $3, caja_id = $5
+     WHERE id = $4 AND pagado = FALSE AND estado <> 'cancelado'`, [metodo, recibido, cambio, req.params.id, cajas[0].id]);
   if (!rs.rowCount) throw falla(409, 'Este pedido ya está pagado o fue cancelado.');
   const [pedido] = await cargarPedidos('p.id = $1', [req.params.id], 'ASC');
   res.json({ ok: true, pedido });

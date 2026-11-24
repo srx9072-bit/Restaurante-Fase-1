@@ -74,6 +74,13 @@ El stock cambia con "Ajustar stock" (entrada, salida o conteo) y también con lo
 - **"Hoy"** se calcula con la zona horaria `America/Guatemala` (se puede cambiar con la variable `ZONA_HORARIA`).
 - Las tablas nuevas se crean solas al iniciar el servidor; los datos que ya existen no se tocan.
 
+## Mesas y caja (Fase 3)
+
+- **Mesas**: el tablero muestra cada mesa como *Libre* u *Ocupada* (con hora de inicio, pedidos, monto por cobrar y quién atiende). Una mesa queda libre cuando todos sus pedidos están entregados y cobrados, o cancelados. El administrador las configura en *Mesas → Configurar mesas* (hay un botón para agregar varias de una vez).
+- **Caja chica**: antes de cobrar hay que abrir la caja con el fondo inicial. Durante el turno se registran ingresos y egresos de efectivo. Al cerrar se cuenta el efectivo y el sistema compara contra lo esperado (fondo + ventas en efectivo + ingresos - egresos), muestra sobrante o faltante y genera un reporte imprimible. Solo puede haber una caja abierta a la vez.
+- **Quién tomó el pedido**: cada tarjeta de pedido muestra el usuario que lo creó. Crea un usuario por empleado en *Usuarios*.
+- Si actualizas un sistema que ya estaba publicado: crea tus mesas (*Configurar mesas*) y abre la caja antes del primer cobro. Los pedidos cobrados antes de esta versión no pertenecen a ninguna caja.
+
 ## Estructura
 
 ```

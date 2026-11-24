@@ -113,7 +113,7 @@ const PLATOS = [
 
 export async function sembrar({ reset = false } = {}) {
   if (reset) {
-    await pool.query('TRUNCATE plato_ingredientes, movimientos_inventario, platos, insumos, clientes, proveedores, usuarios RESTART IDENTITY CASCADE');
+    await pool.query('TRUNCATE plato_ingredientes, movimientos_inventario, platos, insumos, clientes, proveedores, usuarios, mesas, cajas RESTART IDENTITY CASCADE');
   } else {
     const { rows } = await pool.query('SELECT COUNT(*) AS total FROM usuarios');
     if (rows[0].total > 0) return 'La base de datos ya tiene datos. Usa "npm run seed -- --reset" para borrar todo y recargar.';
@@ -152,6 +152,10 @@ export async function sembrar({ reset = false } = {}) {
     });
     await insertarVarios(pool, 'plato_ingredientes', ['plato_id', 'insumo_id', 'cantidad'], filas);
   }
+
+  await insertarVarios(pool, 'mesas', ['nombre', 'capacidad'], [
+    ['Mesa 1', 2], ['Mesa 2', 2], ['Mesa 3', 4], ['Mesa 4', 4], ['Mesa 5', 4], ['Mesa 6', 6], ['Mesa 7', 6], ['Terraza', 4],
+  ]);
 
   await insertarVarios(pool, 'clientes', ['nombre', 'telefono', 'notas'], [
     ['María López', '5555-4444', 'Prefiere mesa junto a la ventana'],

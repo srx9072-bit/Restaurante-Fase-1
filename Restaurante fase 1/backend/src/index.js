@@ -12,6 +12,8 @@ import usuariosRoutes from './routes/usuarios.js';
 import insumosRoutes from './routes/insumos.js';
 import platosRoutes from './routes/platos.js';
 import pedidosRoutes from './routes/pedidos.js';
+import mesasRoutes from './routes/mesas.js';
+import cajaRoutes from './routes/caja.js';
 import { sembrar } from './seed.js';
 
 if (!process.env.JWT_SECRET) {
@@ -29,6 +31,8 @@ app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/insumos', insumosRoutes);
 app.use('/api/platos', platosRoutes);
 app.use('/api/pedidos', pedidosRoutes);
+app.use('/api/mesas', mesasRoutes);
+app.use('/api/caja', cajaRoutes);
 app.use('/api/proveedores', crudRouter({
   tabla: 'proveedores',
   campos: ['nombre', 'contacto', 'telefono', 'email', 'direccion'],
@@ -53,6 +57,7 @@ app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
   if (err.status) return res.status(err.status).json({ error: err.message });
   if (err.code === '23505') return res.status(409).json({ error: 'Ya existe un registro con ese dato (por ejemplo, el correo).' });
   if (err.code === '23503') return res.status(400).json({ error: 'Alguno de los datos elegidos ya no existe.' });
+  if (err.code === '23514') return res.status(400).json({ error: 'Alguno de los datos no es válido.' });
   if (err.code === '22P02') return res.status(400).json({ error: 'Alguno de los datos no tiene un formato válido.' });
   console.error(err);
   res.status(500).json({ error: 'Ocurrió un problema en el servidor. Intenta de nuevo.' });

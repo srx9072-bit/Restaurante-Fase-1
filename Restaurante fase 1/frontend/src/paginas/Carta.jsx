@@ -57,7 +57,7 @@ export default function Carta() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-3xl font-extrabold">Carta de hoy</h2>
+          <h2 className="text-3xl font-bold">Carta de hoy</h2>
           <p className="text-tenue text-lg">
             {platos.length === 0 ? 'Todavía no hay platos.'
               : agotados === 0 ? `Los ${platos.length} platos se pueden servir.`

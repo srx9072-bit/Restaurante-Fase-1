@@ -106,3 +106,41 @@ ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS direccion VARCHAR(255);
 ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS telefono VARCHAR(30);
 ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS recibido NUMERIC(10,2);   -- dinero que entregó el cliente (efectivo)
 ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS cambio NUMERIC(10,2);
+
+-- ===== Mesas y caja =====
+CREATE TABLE IF NOT EXISTS mesas (
+  id SERIAL PRIMARY KEY,
+  nombre VARCHAR(60) NOT NULL,
+  capacidad INT NOT NULL DEFAULT 4 CHECK (capacidad > 0),
+  activo BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+-- Una caja es un turno: se abre con un fondo inicial (caja chica) y se cierra contando el efectivo
+CREATE TABLE IF NOT EXISTS cajas (
+  id SERIAL PRIMARY KEY,
+  estado VARCHAR(10) NOT NULL DEFAULT 'abierta' CHECK (estado IN ('abierta', 'cerrada')),
+  monto_inicial NUMERIC(10,2) NOT NULL DEFAULT 0,
+  abierta_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  abierta_por INT REFERENCES usuarios(id) ON DELETE SET NULL,
+  cerrada_en TIMESTAMPTZ,
+  cerrada_por INT REFERENCES usuarios(id) ON DELETE SET NULL,
+  esperado NUMERIC(10,2),     -- efectivo que debía haber al cerrar
+  contado NUMERIC(10,2),      -- efectivo que se contó
+  diferencia NUMERIC(10,2),   -- contado - esperado (negativo = faltante)
+  notas VARCHAR(255)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS una_sola_caja_abierta ON cajas (estado) WHERE estado = 'abierta';
+
+-- Ingresos y egresos de efectivo durante el turno (compras pequeñas, retiros, etc.)
+CREATE TABLE IF NOT EXISTS caja_movimientos (
+  id SERIAL PRIMARY KEY,
+  caja_id INT NOT NULL REFERENCES cajas(id) ON DELETE CASCADE,
+  tipo VARCHAR(10) NOT NULL CHECK (tipo IN ('ingreso', 'egreso')),
+  monto NUMERIC(10,2) NOT NULL CHECK (monto > 0),
+  concepto VARCHAR(120) NOT NULL,
+  usuario_id INT REFERENCES usuarios(id) ON DELETE SET NULL,
+  creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS mesa_id INT REFERENCES mesas(id) ON DELETE SET NULL;
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS caja_id INT REFERENCES cajas(id) ON DELETE SET NULL;  -- caja en la que se cobró

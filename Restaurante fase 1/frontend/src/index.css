@@ -3,7 +3,9 @@
 @tailwind utilities;
 
 body { @apply bg-fondo text-tinta font-sans; }
-:focus-visible { outline: 3px solid #1E7A57; outline-offset: 2px; }
+h1, h2 { font-family: 'Fraunces', Georgia, serif; letter-spacing: -0.01em; }
+.tarjeta { @apply bg-white border border-borde rounded-2xl shadow-suave; }
+:focus-visible { outline: 3px solid #7B4A24; outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
 /* El recibo se imprime solo: en pantalla está oculto y al imprimir se esconde el resto de la aplicación */

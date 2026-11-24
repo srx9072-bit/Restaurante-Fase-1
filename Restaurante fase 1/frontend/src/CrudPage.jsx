@@ -75,7 +75,7 @@ export default function CrudPage({ titulo, intro, singular, endpoint, campos, co
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-3xl font-extrabold">{titulo}</h2>
+          <h2 className="text-3xl font-bold">{titulo}</h2>
           {intro && <p className="text-tenue text-lg">{intro}</p>}
         </div>
         {puedeEscribir && <button className={btnPrimario} onClick={abrirNuevo}><Plus size={20} aria-hidden="true" /> Nuevo {singular}</button>}

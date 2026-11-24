@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Minus, Plus, Search, ShoppingBag, Trash2, Truck, UtensilsCrossed } from 'lucide-react';
 import { api } from '../api';
 import { Aviso, Campo, ZONAS, btnPrimario, btnSecundario, campo, dinero } from '../ui.jsx';
@@ -10,9 +10,12 @@ const EJEMPLO_NOMBRE = { mesa: 'Ej: 3', llevar: 'Ej: Ana', domicilio: 'Ej: Ana' 
 
 export default function NuevoPedido() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const carritoRef = useRef(null);
   const [platos, setPlatos] = useState(null);
   const [clientes, setClientes] = useState([]);
+  const [mesas, setMesas] = useState([]);
+  const [mesaId, setMesaId] = useState(params.get('mesa') || '');
   const [envio, setEnvio] = useState({});
   const [lineas, setLineas] = useState([]); // { plato_id, cantidad, nota }
   const [tipo, setTipo] = useState('mesa');
@@ -27,8 +30,8 @@ export default function NuevoPedido() {
 
   const cargar = useCallback(async () => {
     try {
-      const [p, c, cfg] = await Promise.all([api('/platos'), api('/clientes'), api('/pedidos/config')]);
-      setPlatos(p); setClientes(c); setEnvio(cfg.envio);
+      const [p, c, cfg, m] = await Promise.all([api('/platos'), api('/clientes'), api('/pedidos/config'), api('/mesas/estado')]);
+      setPlatos(p); setClientes(c); setEnvio(cfg.envio); setMesas(m);
     } catch (e) { setError(e.message); }
   }, []);
   useEffect(() => { cargar(); }, [cargar]);
@@ -62,6 +65,7 @@ export default function NuevoPedido() {
   async function crear() {
     setError('');
     if (!visibles.length) return setError('Agrega al menos un plato al pedido.');
+    if (tipo === 'mesa' && mesas.length > 0 && !mesaId) return setError('Elige la mesa del pedido.');
     if (tipo === 'domicilio' && !zona) return setError('Elige la zona de entrega.');
     if (tipo === 'domicilio' && !direccion.trim()) return setError('Escribe la dirección de entrega.');
     setEnviando(true);
@@ -70,6 +74,7 @@ export default function NuevoPedido() {
         method: 'POST',
         body: {
           tipo, referencia, cliente_id: clienteId || null,
+          ...(tipo === 'mesa' && mesaId ? { mesa_id: Number(mesaId) } : {}),
           ...(tipo === 'domicilio' ? { zona, direccion, telefono } : {}),
           items: visibles.map((l) => ({ plato_id: l.plato_id, cantidad: l.cantidad, nota: l.nota })),
         },
@@ -90,7 +95,7 @@ export default function NuevoPedido() {
     <div className="space-y-5">
       <div>
         <Link to="/pedidos" className="inline-flex items-center gap-1 font-bold text-tenue hover:text-tinta"><ArrowLeft size={18} aria-hidden="true" /> Volver a pedidos</Link>
-        <h2 className="text-3xl font-extrabold mt-1">Nuevo pedido</h2>
+        <h2 className="text-3xl font-bold mt-1">Nuevo pedido</h2>
         <p className="text-tenue text-lg">Toca un plato para agregarlo. Los que no se pueden servir aparecen apagados.</p>
       </div>
 
@@ -109,8 +114,8 @@ export default function NuevoPedido() {
                   const sinMas = p.porciones !== null && n >= p.porciones;
                   return (
                     <button key={p.id} type="button" disabled={!p.disponible || sinMas} onClick={() => agregar(p)}
-                            className={`relative text-left rounded-xl border p-3 min-h-[84px] ${p.disponible ? 'bg-white border-borde hover:border-hoja disabled:opacity-60' : 'bg-aji-suave/40 border-aji/30 text-tenue'}`}>
-                      {n > 0 && <span className="absolute -top-2 -right-2 min-w-[28px] h-7 px-2 rounded-full bg-hoja text-white font-extrabold grid place-items-center">{n}</span>}
+                            className={`relative text-left rounded-xl border p-3 min-h-[84px] ${p.disponible ? 'bg-white border-borde hover:border-cafe disabled:opacity-60' : 'bg-aji-suave/40 border-aji/30 text-tenue'}`}>
+                      {n > 0 && <span className="absolute -top-2 -right-2 min-w-[28px] h-7 px-2 rounded-full bg-cafe text-white font-extrabold grid place-items-center">{n}</span>}
                       <span className="flex justify-between gap-2"><span className="font-extrabold">{p.nombre}</span><span className="font-extrabold whitespace-nowrap">{dinero(p.precio)}</span></span>
                       {!p.disponible
                         ? <span className="block text-sm font-semibold text-aji mt-1">No disponible: falta {p.faltantes.map((f) => f.nombre).join(', ')}</span>
@@ -131,15 +136,30 @@ export default function NuevoPedido() {
           <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Tipo de pedido">
             {TIPOS.map(([valor, texto, Icono]) => (
               <button key={valor} type="button" role="radio" aria-checked={tipo === valor} onClick={() => setTipo(valor)}
-                      className={`min-h-[64px] rounded-lg border text-sm font-bold flex flex-col items-center justify-center gap-1 px-1 ${tipo === valor ? 'border-hoja bg-hoja-suave text-hoja-oscuro' : 'border-borde bg-white hover:bg-fondo'}`}>
+                      className={`min-h-[64px] rounded-lg border text-sm font-bold flex flex-col items-center justify-center gap-1 px-1 ${tipo === valor ? 'border-cafe bg-cafe-suave text-cafe-oscuro' : 'border-borde bg-white hover:bg-fondo'}`}>
                 <Icono size={20} aria-hidden="true" /> {texto}
               </button>
             ))}
           </div>
 
-          <Campo etiqueta={AYUDA_NOMBRE[tipo]}>
-            <input className={campo} value={referencia} onChange={(e) => setReferencia(e.target.value)} placeholder={EJEMPLO_NOMBRE[tipo]} />
-          </Campo>
+          {tipo === 'mesa' && mesas.length > 0 ? (
+            <div>
+              <p className="font-bold mb-1">¿Qué mesa es?</p>
+              <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Mesa">
+                {mesas.map((m) => (
+                  <button key={m.id} type="button" role="radio" aria-checked={String(mesaId) === String(m.id)} onClick={() => setMesaId(String(m.id))}
+                          className={`min-h-[56px] rounded-xl border px-1 text-sm font-bold ${String(mesaId) === String(m.id) ? 'border-cafe bg-cafe text-white' : m.ocupada ? 'border-maiz/50 bg-maiz-suave text-maiz' : 'border-borde bg-white hover:bg-cafe-suave'}`}>
+                    {m.nombre}
+                    <span className="block text-xs font-semibold">{m.ocupada ? 'Ocupada' : 'Libre'}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <Campo etiqueta={AYUDA_NOMBRE[tipo]}>
+              <input className={campo} value={referencia} onChange={(e) => setReferencia(e.target.value)} placeholder={EJEMPLO_NOMBRE[tipo]} />
+            </Campo>
+          )}
           <Campo etiqueta="Cliente registrado (opcional)">
             <select className={campo} value={clienteId} onChange={(e) => elegirCliente(e.target.value)}>
               <option value="">Ninguno</option>

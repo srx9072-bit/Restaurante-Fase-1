@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, ArrowLeftRight, Ban, BellRing, Banknote, CheckCheck, ChefHat, Clock, CreditCard,
-  Plus, Receipt, RefreshCw, ShoppingBag, Truck, UtensilsCrossed, Wallet,
+  Plus, Receipt, RefreshCw, ShoppingBag, Truck, UserRound, UtensilsCrossed, Wallet,
 } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../auth.jsx';
@@ -37,7 +37,7 @@ const accionDe = (p) => {
   return null;
 };
 
-function Tarjeta({ p, rol, ocupado, onAvanzar, onCobrar, onCancelar, onRecibo }) {
+function Tarjeta({ p, rol, ocupado, cajaAbierta, onAvanzar, onCobrar, onCancelar, onRecibo }) {
   const e = ESTADOS[p.estado];
   const puedeCaja = ['admin', 'cajero'].includes(rol);
   const abierto = p.estado !== 'cancelado' && !(p.estado === 'entregado' && p.pagado);
@@ -49,17 +49,18 @@ function Tarjeta({ p, rol, ocupado, onAvanzar, onCobrar, onCancelar, onRecibo })
   const envio = Number(p.costo_envio) || 0;
 
   return (
-    <article className="rounded-xl border border-borde bg-white p-4 flex flex-col gap-3">
+    <article className="tarjeta p-4 flex flex-col gap-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="text-lg font-extrabold">Pedido #{p.id}</h3>
           <p className="flex items-center gap-1.5 text-tenue font-semibold">
             <Tipo size={16} aria-hidden="true" />
-            {textoTipo}{p.referencia ? `: ${p.referencia}` : ''}
+            {p.tipo === 'mesa' && p.mesa ? p.mesa : textoTipo}{p.referencia ? `: ${p.referencia}` : ''}
           </p>
+          {p.atendio && <p className="flex items-center gap-1.5 text-sm text-tenue"><UserRound size={14} aria-hidden="true" /> Tomó el pedido: {p.atendio}</p>}
           {p.cliente && <p className="text-sm text-tenue">Cliente: {p.cliente}</p>}
         </div>
-        <span className="text-sm text-tenue text-right">
+        <span className="text-sm text-tenue text-right whitespace-nowrap">
           {hora(p.creado_en)}
           {abierto && <><br />hace {minutos} min</>}
         </span>
@@ -96,7 +97,7 @@ function Tarjeta({ p, rol, ocupado, onAvanzar, onCobrar, onCancelar, onRecibo })
       <div className="flex flex-wrap gap-2">
         {abierto && puedeAvanzar && <button className={btnPrimario} disabled={ocupado} onClick={() => onAvanzar(p)}>{siguiente}</button>}
         {abierto && puedeCaja && !p.pagado && (
-          <button className={btnSecundario} disabled={ocupado} onClick={() => onCobrar(p)}><Banknote size={18} aria-hidden="true" /> Cobrar</button>
+          <button className={btnSecundario} disabled={ocupado || !cajaAbierta} title={cajaAbierta ? undefined : 'Abre la caja para cobrar'} onClick={() => onCobrar(p)}><Banknote size={18} aria-hidden="true" /> Cobrar</button>
         )}
         {puedeCaja && p.estado !== 'cancelado' && (
           <button className={btnSecundario} onClick={() => onRecibo(p)}><Receipt size={18} aria-hidden="true" /> Recibo</button>
@@ -183,10 +184,14 @@ export default function Pedidos() {
   const [cancelando, setCancelando] = useState(null);
   const [recibo, setRecibo] = useState(null);
   const [ocupado, setOcupado] = useState(false);
+  const [cajaAbierta, setCajaAbierta] = useState(true);
 
   const cargar = useCallback(async () => {
-    try { setPedidos(await api(`/pedidos?vista=${vista}`)); setError(''); } catch (e) { setError(e.message); }
-  }, [vista]);
+    try {
+      setPedidos(await api(`/pedidos?vista=${vista}`)); setError('');
+      if (puedeCaja) setCajaAbierta(Boolean((await api('/caja/actual')).caja));
+    } catch (e) { setError(e.message); }
+  }, [vista, puedeCaja]);
 
   useEffect(() => {
     setPedidos(null);
@@ -233,7 +238,7 @@ export default function Pedidos() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-3xl font-extrabold">Pedidos</h2>
+          <h2 className="text-3xl font-bold">Pedidos</h2>
           <p className="text-tenue text-lg">Lo que se está preparando y lo que ya se cobró.</p>
         </div>
         <div className="flex gap-2">
@@ -244,11 +249,17 @@ export default function Pedidos() {
 
       <Aviso>{aviso}</Aviso>
       <Aviso tipo="error">{error}</Aviso>
+      {puedeCaja && !cajaAbierta && (
+        <div role="alert" className="rounded-xl bg-maiz-suave text-maiz px-4 py-3 font-semibold flex flex-wrap items-center justify-between gap-2">
+          La caja está cerrada: no se puede cobrar todavía.
+          <Link to="/caja" className={btnPrimario}>Abrir caja</Link>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2" role="group" aria-label="Ver pedidos">
         {VISTAS.map(([valor, texto]) => (
           <button key={valor} onClick={() => setVista(valor)} aria-pressed={vista === valor}
-                  className={`h-11 rounded-full px-5 font-bold border ${vista === valor ? 'bg-tinta text-white border-tinta' : 'bg-white border-borde hover:bg-fondo'}`}>
+                  className={`h-11 rounded-full px-5 font-bold border ${vista === valor ? 'bg-cafe text-white border-cafe' : 'bg-white border-borde hover:bg-fondo'}`}>
             {texto}
           </button>
         ))}
@@ -259,7 +270,7 @@ export default function Pedidos() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {pedidos.map((p) => (
-            <Tarjeta key={p.id} p={p} rol={usuario.rol} ocupado={ocupado}
+            <Tarjeta key={p.id} p={p} rol={usuario.rol} ocupado={ocupado} cajaAbierta={cajaAbierta}
                      onAvanzar={avanzar} onCobrar={setCobrando} onCancelar={setCancelando} onRecibo={setRecibo} />
           ))}
         </div>

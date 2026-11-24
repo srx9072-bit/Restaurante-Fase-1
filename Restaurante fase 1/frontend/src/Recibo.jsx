@@ -5,7 +5,7 @@ import { METODOS_PAGO, Modal, NOMBRE, ZONAS, btnPrimario, btnSecundario, dinero,
 function Contenido({ p }) {
   const envio = Number(p.costo_envio) || 0;
   const subtotal = Number(p.total) - envio;
-  const lugar = p.tipo === 'domicilio' ? 'A domicilio' : p.tipo === 'llevar' ? 'Para llevar' : 'Mesa';
+  const lugar = p.tipo === 'domicilio' ? 'A domicilio' : p.tipo === 'llevar' ? 'Para llevar' : (p.mesa || 'Mesa');
   const linea = <div className="border-t border-dashed border-black my-2" />;
   const fila = (texto, valor, fuerte) => (
     <div className={`flex justify-between gap-2 ${fuerte ? 'text-base font-extrabold' : ''}`}><span>{texto}</span><span>{valor}</span></div>

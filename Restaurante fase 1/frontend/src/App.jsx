@@ -10,6 +10,9 @@ import Clientes from './paginas/Clientes.jsx';
 import Usuarios from './paginas/Usuarios.jsx';
 import Pedidos from './paginas/Pedidos.jsx';
 import NuevoPedido from './paginas/NuevoPedido.jsx';
+import Mesas from './paginas/Mesas.jsx';
+import MesasConfig from './paginas/MesasConfig.jsx';
+import Caja from './paginas/Caja.jsx';
 
 const Solo = ({ roles, children }) => {
   const { usuario } = useAuth();
@@ -24,6 +27,9 @@ export default function App() {
       <Route element={<Layout />}>
         <Route index element={<Carta />} />
         <Route path="inventario" element={<Inventario />} />
+        <Route path="mesas" element={<Mesas />} />
+        <Route path="mesas/configurar" element={<Solo roles={['admin']}><MesasConfig /></Solo>} />
+        <Route path="caja" element={<Solo roles={['admin', 'cajero']}><Caja /></Solo>} />
         <Route path="pedidos" element={<Pedidos />} />
         <Route path="pedidos/nuevo" element={<Solo roles={['admin', 'cajero']}><NuevoPedido /></Solo>} />
         <Route path="platos" element={<Solo roles={['admin']}><Platos /></Solo>} />
