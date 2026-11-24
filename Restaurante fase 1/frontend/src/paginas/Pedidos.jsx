@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  ArrowLeftRight, Ban, BellRing, Banknote, CheckCheck, ChefHat, Clock, CreditCard,
-  Plus, RefreshCw, ShoppingBag, UtensilsCrossed, Wallet,
+  ArrowLeft, ArrowLeftRight, Ban, BellRing, Banknote, CheckCheck, ChefHat, Clock, CreditCard,
+  Plus, Receipt, RefreshCw, ShoppingBag, Truck, UtensilsCrossed, Wallet,
 } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../auth.jsx';
-import { Aviso, Etiqueta, Modal, btnPeligro, btnPrimario, btnSecundario, dinero } from '../ui.jsx';
+import Recibo from '../Recibo.jsx';
+import { Aviso, Campo, Etiqueta, METODOS_PAGO, Modal, ZONAS, btnPeligro, btnPrimario, btnSecundario, campo, dinero } from '../ui.jsx';
 
 const ESTADOS = {
   pendiente: { texto: 'Pendiente', tono: 'ambar', icono: Clock },
@@ -15,8 +16,12 @@ const ESTADOS = {
   entregado: { texto: 'Entregado', tono: 'gris', icono: CheckCheck },
   cancelado: { texto: 'Cancelado', tono: 'rojo', icono: Ban },
 };
-const ACCION = { pendiente: 'Empezar a preparar', preparando: 'Marcar como listo', listo: 'Entregar' };
-const METODOS = [['efectivo', 'Efectivo', Banknote], ['tarjeta', 'Tarjeta', CreditCard], ['transferencia', 'Transferencia', ArrowLeftRight]];
+const ICONO_PAGO = { efectivo: Banknote, tarjeta: CreditCard, transferencia: ArrowLeftRight };
+const TIPOS = {
+  mesa: ['Mesa', UtensilsCrossed],
+  llevar: ['Para llevar', ShoppingBag],
+  domicilio: ['A domicilio', Truck],
+};
 const VISTAS = [['proceso', 'En proceso'], ['finalizados', 'Finalizados hoy'], ['cancelados', 'Cancelados hoy']];
 const VACIO = {
   proceso: 'No hay pedidos en proceso.',
@@ -25,25 +30,32 @@ const VACIO = {
 };
 
 const hora = (iso) => new Date(iso).toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' });
+const accionDe = (p) => {
+  if (p.estado === 'pendiente') return 'Empezar a preparar';
+  if (p.estado === 'preparando') return 'Marcar como listo';
+  if (p.estado === 'listo') return p.tipo === 'domicilio' ? 'Entregado al cliente' : 'Entregar';
+  return null;
+};
 
-function Tarjeta({ p, rol, ocupado, onAvanzar, onCobrar, onCancelar }) {
+function Tarjeta({ p, rol, ocupado, onAvanzar, onCobrar, onCancelar, onRecibo }) {
   const e = ESTADOS[p.estado];
   const puedeCaja = ['admin', 'cajero'].includes(rol);
   const abierto = p.estado !== 'cancelado' && !(p.estado === 'entregado' && p.pagado);
-  const siguiente = ACCION[p.estado];
+  const siguiente = accionDe(p);
   const puedeAvanzar = siguiente && (p.estado !== 'listo' || puedeCaja);
   const minutos = Math.max(0, Math.floor((Date.now() - new Date(p.creado_en).getTime()) / 60000));
-  const Tipo = p.tipo === 'llevar' ? ShoppingBag : UtensilsCrossed;
-  const metodo = METODOS.find((m) => m[0] === p.metodo_pago)?.[1];
+  const [textoTipo, Tipo] = TIPOS[p.tipo];
+  const IconoPago = ICONO_PAGO[p.metodo_pago] || Banknote;
+  const envio = Number(p.costo_envio) || 0;
 
   return (
     <article className="rounded-xl border border-borde bg-white p-4 flex flex-col gap-3">
       <div className="flex items-start justify-between gap-2">
-        <div>
+        <div className="min-w-0">
           <h3 className="text-lg font-extrabold">Pedido #{p.id}</h3>
           <p className="flex items-center gap-1.5 text-tenue font-semibold">
             <Tipo size={16} aria-hidden="true" />
-            {p.tipo === 'llevar' ? 'Para llevar' : 'Mesa'}{p.referencia ? `: ${p.referencia}` : ''}
+            {textoTipo}{p.referencia ? `: ${p.referencia}` : ''}
           </p>
           {p.cliente && <p className="text-sm text-tenue">Cliente: {p.cliente}</p>}
         </div>
@@ -52,6 +64,14 @@ function Tarjeta({ p, rol, ocupado, onAvanzar, onCobrar, onCancelar }) {
           {abierto && <><br />hace {minutos} min</>}
         </span>
       </div>
+
+      {p.tipo === 'domicilio' && (
+        <div className="rounded-lg bg-fondo p-3 text-sm space-y-0.5">
+          <p className="font-bold">{ZONAS[p.zona_envio]} · envío {dinero(envio)}</p>
+          <p>{p.direccion}</p>
+          {p.telefono && <p className="text-tenue">Tel: {p.telefono}</p>}
+        </div>
+      )}
 
       <ul className="space-y-1">
         {p.items.map((i) => (
@@ -66,22 +86,88 @@ function Tarjeta({ p, rol, ocupado, onAvanzar, onCobrar, onCancelar }) {
         <span className="text-xl font-extrabold mr-auto">{dinero(p.total)}</span>
         <Etiqueta tono={e.tono} icono={e.icono}>{e.texto}</Etiqueta>
         {p.pagado
-          ? <Etiqueta tono="verde" icono={Banknote}>Pagado{metodo ? `: ${metodo}` : ''}</Etiqueta>
+          ? <Etiqueta tono="verde" icono={IconoPago}>Pagado: {METODOS_PAGO[p.metodo_pago]}</Etiqueta>
           : p.estado !== 'cancelado' && <Etiqueta tono="ambar" icono={Wallet}>Sin pagar</Etiqueta>}
       </div>
+      {p.pagado && p.metodo_pago === 'efectivo' && p.recibido != null && Number(p.cambio) > 0 && (
+        <p className="text-sm text-tenue -mt-1">Recibido {dinero(p.recibido)} · cambio {dinero(p.cambio)}</p>
+      )}
 
-      {abierto && (
-        <div className="flex flex-wrap gap-2">
-          {puedeAvanzar && <button className={btnPrimario} disabled={ocupado} onClick={() => onAvanzar(p)}>{siguiente}</button>}
-          {puedeCaja && !p.pagado && (
-            <button className={btnSecundario} disabled={ocupado} onClick={() => onCobrar(p)}><Banknote size={18} aria-hidden="true" /> Cobrar</button>
-          )}
-          {puedeCaja && !p.pagado && p.estado !== 'entregado' && (
-            <button className={btnSecundario} disabled={ocupado} onClick={() => onCancelar(p)}>Cancelar pedido</button>
-          )}
+      <div className="flex flex-wrap gap-2">
+        {abierto && puedeAvanzar && <button className={btnPrimario} disabled={ocupado} onClick={() => onAvanzar(p)}>{siguiente}</button>}
+        {abierto && puedeCaja && !p.pagado && (
+          <button className={btnSecundario} disabled={ocupado} onClick={() => onCobrar(p)}><Banknote size={18} aria-hidden="true" /> Cobrar</button>
+        )}
+        {puedeCaja && p.estado !== 'cancelado' && (
+          <button className={btnSecundario} onClick={() => onRecibo(p)}><Receipt size={18} aria-hidden="true" /> Recibo</button>
+        )}
+        {abierto && puedeCaja && !p.pagado && p.estado !== 'entregado' && (
+          <button className={btnSecundario} disabled={ocupado} onClick={() => onCancelar(p)}>Cancelar pedido</button>
+        )}
+      </div>
+    </article>
+  );
+}
+
+// Elegir cómo pagó el cliente. En efectivo se calcula el cambio.
+function CobroModal({ pedido, ocupado, onClose, onPagar }) {
+  const [efectivo, setEfectivo] = useState(false);
+  const [recibido, setRecibido] = useState('');
+  const total = Number(pedido.total);
+  const dado = Number(recibido);
+  const valido = recibido !== '' && Number.isFinite(dado) && dado + 1e-9 >= total;
+  const cambio = valido ? Math.round((dado - total) * 100) / 100 : 0;
+  const rapidos = [...new Set([total, ...[10, 20, 50, 100, 200, 500].filter((b) => b > total)])].slice(0, 4);
+  const metodos = [['efectivo', Banknote], ['tarjeta', CreditCard], ['transferencia', ArrowLeftRight]];
+
+  return (
+    <Modal titulo={`Cobrar pedido #${pedido.id}`} onClose={onClose}>
+      <p className="text-sm text-tenue">Total a pagar</p>
+      <p className="text-4xl font-extrabold">{dinero(total)}</p>
+      {Number(pedido.costo_envio) > 0 && <p className="text-sm text-tenue">Incluye envío de {dinero(pedido.costo_envio)}</p>}
+
+      {!efectivo ? (
+        <>
+          <p className="text-tenue mt-4 mb-3">¿Cómo pagó el cliente?</p>
+          <div className="grid gap-2">
+            {metodos.map(([valor, Icono]) => (
+              <button key={valor} className={`${btnSecundario} justify-start h-14 text-lg`} disabled={ocupado}
+                      onClick={() => (valor === 'efectivo' ? setEfectivo(true) : onPagar(valor))}>
+                <Icono size={22} aria-hidden="true" /> {METODOS_PAGO[valor]}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="mt-4 space-y-4">
+          <Campo etiqueta="¿Con cuánto paga el cliente?">
+            <input className={`${campo} text-xl`} type="number" inputMode="decimal" min="0" step="any" autoFocus
+                   value={recibido} onChange={(e) => setRecibido(e.target.value)} placeholder="0.00" />
+          </Campo>
+          <div className="flex flex-wrap gap-2">
+            {rapidos.map((v) => (
+              <button key={v} type="button" className={btnSecundario} onClick={() => setRecibido(String(v))}>
+                {v === total ? 'Exacto' : dinero(v)}
+              </button>
+            ))}
+          </div>
+          <div className="rounded-xl bg-fondo p-4" aria-live="polite">
+            {valido ? (
+              <>
+                <p className="text-sm text-tenue">Cambio a entregar</p>
+                <p className="text-4xl font-extrabold text-hoja-oscuro">{dinero(cambio)}</p>
+              </>
+            ) : recibido !== '' ? (
+              <p className="text-lg font-bold text-aji">Faltan {dinero(Math.max(0, total - (Number.isFinite(dado) ? dado : 0)))}</p>
+            ) : <p className="text-tenue">Escribe cuánto dinero entrega el cliente.</p>}
+          </div>
+          <div className="flex gap-2 justify-between">
+            <button className={btnSecundario} onClick={() => setEfectivo(false)}><ArrowLeft size={18} aria-hidden="true" /> Otro método</button>
+            <button className={btnPrimario} disabled={!valido || ocupado} onClick={() => onPagar('efectivo', dado)}>Confirmar cobro</button>
+          </div>
         </div>
       )}
-    </article>
+    </Modal>
   );
 }
 
@@ -95,6 +181,7 @@ export default function Pedidos() {
   const [aviso, setAviso] = useState(location.state?.aviso || '');
   const [cobrando, setCobrando] = useState(null);
   const [cancelando, setCancelando] = useState(null);
+  const [recibo, setRecibo] = useState(null);
   const [ocupado, setOcupado] = useState(false);
 
   const cargar = useCallback(async () => {
@@ -114,19 +201,25 @@ export default function Pedidos() {
     return () => clearTimeout(t);
   }, [aviso]);
 
-  async function hacer(fn, mensaje) {
+  async function hacer(fn) {
     setOcupado(true);
-    try { await fn(); if (mensaje) setAviso(mensaje); setError(''); } catch (e) { setError(e.message); }
+    try { await fn(); setError(''); } catch (e) { setError(e.message); }
     setOcupado(false);
     cargar();
   }
 
   const avanzar = (p) => hacer(() => api(`/pedidos/${p.id}/avanzar`, { method: 'POST' }));
-  const cobrar = async (metodo) => {
+
+  const pagar = async (metodo, recibido) => {
     const p = cobrando;
     setCobrando(null);
-    await hacer(() => api(`/pedidos/${p.id}/pago`, { method: 'POST', body: { metodo } }), `Pedido #${p.id} cobrado.`);
+    await hacer(async () => {
+      const r = await api(`/pedidos/${p.id}/pago`, { method: 'POST', body: { metodo, recibido } });
+      setAviso(`Pedido #${p.id} cobrado.`);
+      setRecibo(r.pedido); // ofrece imprimir el recibo enseguida
+    });
   };
+
   const cancelar = async () => {
     const p = cancelando;
     setCancelando(null);
@@ -167,24 +260,13 @@ export default function Pedidos() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {pedidos.map((p) => (
             <Tarjeta key={p.id} p={p} rol={usuario.rol} ocupado={ocupado}
-                     onAvanzar={avanzar} onCobrar={setCobrando} onCancelar={setCancelando} />
+                     onAvanzar={avanzar} onCobrar={setCobrando} onCancelar={setCancelando} onRecibo={setRecibo} />
           ))}
         </div>
       )}
 
-      {cobrando && (
-        <Modal titulo={`Cobrar pedido #${cobrando.id}`} onClose={() => setCobrando(null)}>
-          <p className="text-3xl font-extrabold mb-4">{dinero(cobrando.total)}</p>
-          <p className="text-tenue mb-3">¿Cómo pagó el cliente?</p>
-          <div className="grid gap-2">
-            {METODOS.map(([valor, texto, Icono]) => (
-              <button key={valor} className={`${btnSecundario} justify-start h-14 text-lg`} disabled={ocupado} onClick={() => cobrar(valor)}>
-                <Icono size={22} aria-hidden="true" /> {texto}
-              </button>
-            ))}
-          </div>
-        </Modal>
-      )}
+      {cobrando && <CobroModal pedido={cobrando} ocupado={ocupado} onClose={() => setCobrando(null)} onPagar={pagar} />}
+      {recibo && <Recibo pedido={recibo} onClose={() => setRecibo(null)} />}
 
       {cancelando && (
         <Modal titulo={`¿Cancelar el pedido #${cancelando.id}?`} onClose={() => setCancelando(null)}>

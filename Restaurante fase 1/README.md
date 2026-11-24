@@ -65,9 +65,11 @@ El stock cambia con "Ajustar stock" (entrada, salida o conteo) y también con lo
 
 ## Pedidos (Fase 2)
 
-- **Crear** (admin y caja): se eligen los platos, con una nota por plato (por ejemplo la base de la crepa, el sabor o "sin cebolla"), y si es para mesa o para llevar. Al crearlo, los ingredientes se descuentan del inventario. Si no alcanza el stock de algo, el pedido no se crea y se explica qué falta.
+- **Crear** (admin y caja): se eligen los platos, con una nota por plato (por ejemplo la base de la crepa, el sabor o "sin cebolla"), y si es para mesa, para llevar o a domicilio. Al crearlo, los ingredientes se descuentan del inventario. Si no alcanza el stock de algo, el pedido no se crea y se explica qué falta.
 - **Estados:** Pendiente, Preparando, Listo y Entregado. Cocina avanza hasta "Listo"; entregar lo hacen caja y administrador.
-- **Cobro:** efectivo, tarjeta o transferencia. Un pedido queda finalizado cuando está entregado y pagado.
+- **A domicilio:** se elige la zona (céntrica Q5, rural Q15), se escribe la dirección y, si se quiere, el teléfono. El envío se suma al total. Las tarifas se pueden cambiar con las variables `ENVIO_CENTRICA` y `ENVIO_RURAL`.
+- **Cobro:** efectivo, tarjeta o transferencia. En efectivo se escribe con cuánto paga el cliente y el sistema muestra el cambio (también hay botones con montos sugeridos). Un pedido queda finalizado cuando está entregado y pagado.
+- **Recibo:** después de cobrar se abre el recibo para imprimirlo o guardarlo como PDF, y también se puede abrir desde cualquier pedido con el botón "Recibo". Es un comprobante de consumo, no una factura legal.
 - **Cancelar:** si el pedido sigue pendiente, los ingredientes vuelven al inventario. Si ya se empezó a preparar, no vuelven. Un pedido pagado o entregado no se cancela.
 - **"Hoy"** se calcula con la zona horaria `America/Guatemala` (se puede cambiar con la variable `ZONA_HORARIA`).
 - Las tablas nuevas se crean solas al iniciar el servidor; los datos que ya existen no se tocan.

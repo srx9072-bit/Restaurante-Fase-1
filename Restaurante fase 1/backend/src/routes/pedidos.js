@@ -10,6 +10,9 @@ const ZONA = process.env.ZONA_HORARIA || 'America/Guatemala'; // define qué es 
 const EPS = 1e-9;
 const r2 = (n) => Math.round(n * 100) / 100;
 const METODOS = ['efectivo', 'tarjeta', 'transferencia'];
+// Tarifa de envío a domicilio por zona (se puede cambiar con ENVIO_CENTRICA y ENVIO_RURAL)
+const tarifa = (valor, porDefecto) => (Number.isFinite(Number(valor)) && valor !== undefined && valor !== '' ? Number(valor) : porDefecto);
+const ENVIO = { centrica: tarifa(process.env.ENVIO_CENTRICA, 5), rural: tarifa(process.env.ENVIO_RURAL, 15) };
 const SIGUIENTE = { pendiente: 'preparando', preparando: 'listo', listo: 'entregado' };
 const QUIEN = { preparando: ['admin', 'cajero', 'cocina'], listo: ['admin', 'cajero', 'cocina'], entregado: ['admin', 'cajero'] };
 
@@ -51,7 +54,7 @@ async function registrarMovimientos(db, cambios, signo, nota, usuarioId) {
 async function cargarPedidos(condicion, params, orden) {
   const { rows: pedidos } = await pool.query(
     `SELECT p.id, p.tipo, p.referencia, p.estado, p.total, p.pagado, p.metodo_pago, p.pagado_en, p.creado_en,
-            p.cliente_id, c.nombre AS cliente, u.nombre AS atendio
+            p.zona_envio, p.costo_envio, p.direccion, p.telefono, p.recibido, p.cambio, p.cliente_id, c.nombre AS cliente, u.nombre AS atendio
      FROM pedidos p
      LEFT JOIN clientes c ON c.id = p.cliente_id
      LEFT JOIN usuarios u ON u.id = p.usuario_id
@@ -62,6 +65,9 @@ async function cargarPedidos(condicion, params, orden) {
     [pedidos.map((p) => p.id)]);
   return pedidos.map((p) => ({ ...p, items: items.filter((i) => i.pedido_id === p.id) }));
 }
+
+// Datos que la interfaz necesita para calcular el envío
+r.get('/config', (req, res) => res.json({ envio: ENVIO }));
 
 // vista: proceso (lo que sigue abierto), finalizados (entregados y pagados hoy), cancelados (hoy)
 r.get('/', asyncH(async (req, res) => {
@@ -80,12 +86,21 @@ r.get('/', asyncH(async (req, res) => {
 // Crea el pedido y descuenta del inventario los ingredientes de cada plato (todo o nada)
 r.post('/', roles('admin', 'cajero'), asyncH(async (req, res) => {
   const b = req.body;
-  const tipo = b.tipo === 'llevar' ? 'llevar' : 'mesa';
+  const tipo = ['mesa', 'llevar', 'domicilio'].includes(b.tipo) ? b.tipo : 'mesa';
   const referencia = String(b.referencia || '').trim().slice(0, 60) || null;
   const clienteId = b.cliente_id ? Number(b.cliente_id) : null;
   if (clienteId !== null && !Number.isInteger(clienteId)) throw falla(400, 'El cliente no es válido.');
   const lineas = Array.isArray(b.items) ? b.items : [];
   if (!lineas.length) throw falla(400, 'Agrega al menos un plato al pedido.');
+  let zona = null, costoEnvio = 0, direccion = null, telefono = null;
+  if (tipo === 'domicilio') {
+    if (!Object.hasOwn(ENVIO, b.zona)) throw falla(400, 'Elige la zona de entrega.');
+    zona = b.zona;
+    costoEnvio = ENVIO[zona];
+    direccion = String(b.direccion || '').trim().slice(0, 255);
+    if (!direccion) throw falla(400, 'Escribe la dirección de entrega.');
+    telefono = String(b.telefono || '').trim().slice(0, 30) || null;
+  }
   const vistos = new Set();
   for (const l of lineas) {
     const cant = Number(l.cantidad);
@@ -108,7 +123,8 @@ r.post('/', roles('admin', 'cajero'), asyncH(async (req, res) => {
         necesario.set(x.insumo_id, (necesario.get(x.insumo_id) || 0) + Number(x.cantidad) * Number(l.cantidad));
       }
     }
-    const total = r2(lineas.reduce((s, l) => s + Number(porId.get(Number(l.plato_id)).precio) * Number(l.cantidad), 0));
+    const subtotal = lineas.reduce((s, l) => s + Number(porId.get(Number(l.plato_id)).precio) * Number(l.cantidad), 0);
+    const total = r2(subtotal + costoEnvio); // el envío ya va incluido en el total
 
     if (clienteId !== null) {
       const { rowCount } = await db.query('SELECT 1 FROM clientes WHERE id = $1 AND activo = TRUE', [clienteId]);
@@ -117,8 +133,9 @@ r.post('/', roles('admin', 'cajero'), asyncH(async (req, res) => {
     const cambios = await ajustarStock(db, necesario, -1);
 
     const { rows: [ped] } = await db.query(
-      'INSERT INTO pedidos (tipo, referencia, cliente_id, total, usuario_id) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-      [tipo, referencia, clienteId, total, req.usuario.id]);
+      `INSERT INTO pedidos (tipo, referencia, cliente_id, total, usuario_id, zona_envio, costo_envio, direccion, telefono)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+      [tipo, referencia, clienteId, total, req.usuario.id, zona, costoEnvio, direccion, telefono]);
     await insertarVarios(db, 'pedido_items', ['pedido_id', 'plato_id', 'nombre', 'precio', 'cantidad', 'nota'],
       lineas.map((l) => {
         const p = porId.get(Number(l.plato_id));
@@ -143,14 +160,30 @@ r.post('/:id/avanzar', asyncH(async (req, res) => {
   res.json({ estado: nuevo });
 }));
 
+// En efectivo se puede indicar con cuánto paga el cliente: se calcula y guarda el cambio.
+// Si no se indica, se toma como pago exacto.
 r.post('/:id/pago', roles('admin', 'cajero'), asyncH(async (req, res) => {
   const { metodo } = req.body;
   if (!METODOS.includes(metodo)) throw falla(400, 'Elige cómo pagó el cliente.');
+  const { rows } = await pool.query('SELECT total FROM pedidos WHERE id = $1', [req.params.id]);
+  if (!rows[0]) throw falla(404, 'No se encontró el pedido.');
+  const total = Number(rows[0].total);
+
+  let recibido = null, cambio = null;
+  if (metodo === 'efectivo') {
+    const dado = req.body.recibido;
+    recibido = dado === undefined || dado === null || dado === '' ? total : Number(dado);
+    if (!Number.isFinite(recibido) || recibido > 1000000) throw falla(400, 'El dinero recibido no es válido.');
+    if (recibido + EPS < total) throw falla(400, `El dinero recibido no alcanza: el total es ${r2(total)}.`);
+    recibido = r2(recibido);
+    cambio = r2(recibido - total);
+  }
   const rs = await pool.query(
-    `UPDATE pedidos SET pagado = TRUE, metodo_pago = $1, pagado_en = NOW()
-     WHERE id = $2 AND pagado = FALSE AND estado <> 'cancelado'`, [metodo, req.params.id]);
+    `UPDATE pedidos SET pagado = TRUE, metodo_pago = $1, pagado_en = NOW(), recibido = $2, cambio = $3
+     WHERE id = $4 AND pagado = FALSE AND estado <> 'cancelado'`, [metodo, recibido, cambio, req.params.id]);
   if (!rs.rowCount) throw falla(409, 'Este pedido ya está pagado o fue cancelado.');
-  res.json({ ok: true });
+  const [pedido] = await cargarPedidos('p.id = $1', [req.params.id], 'ASC');
+  res.json({ ok: true, pedido });
 }));
 
 // Si el pedido sigue pendiente, los ingredientes vuelven al inventario. Si ya se empezó a preparar, no.

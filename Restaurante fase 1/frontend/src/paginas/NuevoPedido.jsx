@@ -1,33 +1,43 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Minus, Plus, Search, ShoppingBag, Trash2, UtensilsCrossed } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, Search, ShoppingBag, Trash2, Truck, UtensilsCrossed } from 'lucide-react';
 import { api } from '../api';
-import { Aviso, Campo, btnPrimario, btnSecundario, campo, dinero } from '../ui.jsx';
+import { Aviso, Campo, ZONAS, btnPrimario, btnSecundario, campo, dinero } from '../ui.jsx';
+
+const TIPOS = [['mesa', 'Mesa', UtensilsCrossed], ['llevar', 'Para llevar', ShoppingBag], ['domicilio', 'A domicilio', Truck]];
+const AYUDA_NOMBRE = { mesa: 'Mesa (opcional)', llevar: 'Nombre de quien recoge (opcional)', domicilio: 'Nombre de quien recibe (opcional)' };
+const EJEMPLO_NOMBRE = { mesa: 'Ej: 3', llevar: 'Ej: Ana', domicilio: 'Ej: Ana' };
 
 export default function NuevoPedido() {
   const navigate = useNavigate();
   const carritoRef = useRef(null);
   const [platos, setPlatos] = useState(null);
   const [clientes, setClientes] = useState([]);
+  const [envio, setEnvio] = useState({});
   const [lineas, setLineas] = useState([]); // { plato_id, cantidad, nota }
   const [tipo, setTipo] = useState('mesa');
   const [referencia, setReferencia] = useState('');
   const [clienteId, setClienteId] = useState('');
+  const [zona, setZona] = useState('');
+  const [direccion, setDireccion] = useState('');
+  const [telefono, setTelefono] = useState('');
   const [busca, setBusca] = useState('');
   const [error, setError] = useState('');
   const [enviando, setEnviando] = useState(false);
 
   const cargar = useCallback(async () => {
     try {
-      const [p, c] = await Promise.all([api('/platos'), api('/clientes')]);
-      setPlatos(p); setClientes(c);
+      const [p, c, cfg] = await Promise.all([api('/platos'), api('/clientes'), api('/pedidos/config')]);
+      setPlatos(p); setClientes(c); setEnvio(cfg.envio);
     } catch (e) { setError(e.message); }
   }, []);
   useEffect(() => { cargar(); }, [cargar]);
 
   const mapa = useMemo(() => new Map((platos || []).map((p) => [p.id, p])), [platos]);
   const visibles = lineas.filter((l) => mapa.has(l.plato_id));
-  const total = visibles.reduce((s, l) => s + mapa.get(l.plato_id).precio * l.cantidad, 0);
+  const subtotal = visibles.reduce((s, l) => s + mapa.get(l.plato_id).precio * l.cantidad, 0);
+  const costoEnvio = tipo === 'domicilio' && zona ? Number(envio[zona]) || 0 : 0;
+  const total = subtotal + costoEnvio;
   const unidades = visibles.reduce((s, l) => s + l.cantidad, 0);
   const enPedido = (id) => lineas.find((l) => l.plato_id === id)?.cantidad || 0;
 
@@ -40,15 +50,27 @@ export default function NuevoPedido() {
   const quitar = (id) => setLineas((ls) => ls.filter((l) => l.plato_id !== id));
   const cambiarNota = (id, nota) => setLineas((ls) => ls.map((l) => (l.plato_id === id ? { ...l, nota } : l)));
 
+  // Al elegir un cliente registrado se completan los datos que ya tenemos de él
+  function elegirCliente(id) {
+    setClienteId(id);
+    const c = clientes.find((x) => String(x.id) === String(id));
+    if (!c) return;
+    if (!referencia && tipo !== 'mesa') setReferencia(c.nombre);
+    if (!telefono && c.telefono) setTelefono(c.telefono);
+  }
+
   async function crear() {
     setError('');
     if (!visibles.length) return setError('Agrega al menos un plato al pedido.');
+    if (tipo === 'domicilio' && !zona) return setError('Elige la zona de entrega.');
+    if (tipo === 'domicilio' && !direccion.trim()) return setError('Escribe la dirección de entrega.');
     setEnviando(true);
     try {
       const r = await api('/pedidos', {
         method: 'POST',
         body: {
           tipo, referencia, cliente_id: clienteId || null,
+          ...(tipo === 'domicilio' ? { zona, direccion, telefono } : {}),
           items: visibles.map((l) => ({ plato_id: l.plato_id, cantidad: l.cantidad, nota: l.nota })),
         },
       });
@@ -72,7 +94,7 @@ export default function NuevoPedido() {
         <p className="text-tenue text-lg">Toca un plato para agregarlo. Los que no se pueden servir aparecen apagados.</p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-[1fr_360px]">
+      <div className="grid gap-6 md:grid-cols-[1fr_380px]">
         <section className="space-y-5 min-w-0">
           <div className="relative">
             <Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-tenue" aria-hidden="true" />
@@ -106,23 +128,45 @@ export default function NuevoPedido() {
         <aside ref={carritoRef} className="md:sticky md:top-4 md:self-start bg-white border border-borde rounded-xl p-4 space-y-4">
           <h3 className="text-xl font-extrabold">Pedido</h3>
 
-          <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Tipo de pedido">
-            {[['mesa', 'Mesa', UtensilsCrossed], ['llevar', 'Para llevar', ShoppingBag]].map(([valor, texto, Icono]) => (
+          <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Tipo de pedido">
+            {TIPOS.map(([valor, texto, Icono]) => (
               <button key={valor} type="button" role="radio" aria-checked={tipo === valor} onClick={() => setTipo(valor)}
-                      className={`h-12 rounded-lg border font-bold inline-flex items-center justify-center gap-2 ${tipo === valor ? 'border-hoja bg-hoja-suave text-hoja-oscuro' : 'border-borde bg-white hover:bg-fondo'}`}>
-                <Icono size={18} aria-hidden="true" /> {texto}
+                      className={`min-h-[64px] rounded-lg border text-sm font-bold flex flex-col items-center justify-center gap-1 px-1 ${tipo === valor ? 'border-hoja bg-hoja-suave text-hoja-oscuro' : 'border-borde bg-white hover:bg-fondo'}`}>
+                <Icono size={20} aria-hidden="true" /> {texto}
               </button>
             ))}
           </div>
-          <Campo etiqueta={tipo === 'mesa' ? 'Mesa (opcional)' : 'Nombre de quien recoge (opcional)'}>
-            <input className={campo} value={referencia} onChange={(e) => setReferencia(e.target.value)} placeholder={tipo === 'mesa' ? 'Ej: 3' : 'Ej: Ana'} />
+
+          <Campo etiqueta={AYUDA_NOMBRE[tipo]}>
+            <input className={campo} value={referencia} onChange={(e) => setReferencia(e.target.value)} placeholder={EJEMPLO_NOMBRE[tipo]} />
           </Campo>
           <Campo etiqueta="Cliente registrado (opcional)">
-            <select className={campo} value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
+            <select className={campo} value={clienteId} onChange={(e) => elegirCliente(e.target.value)}>
               <option value="">Ninguno</option>
               {clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
             </select>
           </Campo>
+
+          {tipo === 'domicilio' && (
+            <div className="space-y-3 rounded-xl bg-fondo p-3">
+              <p className="font-bold">Entrega a domicilio</p>
+              <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Zona de entrega">
+                {Object.keys(ZONAS).map((z) => (
+                  <button key={z} type="button" role="radio" aria-checked={zona === z} onClick={() => setZona(z)}
+                          className={`min-h-[64px] rounded-lg border font-bold px-2 ${zona === z ? 'border-hoja bg-hoja-suave text-hoja-oscuro' : 'border-borde bg-white hover:bg-fondo'}`}>
+                    {ZONAS[z]}
+                    <span className="block text-sm font-semibold">{envio[z] !== undefined ? `Envío ${dinero(envio[z])}` : ''}</span>
+                  </button>
+                ))}
+              </div>
+              <Campo etiqueta="Dirección de entrega">
+                <input className={campo} value={direccion} onChange={(e) => setDireccion(e.target.value)} placeholder="Calle, aldea, casa, referencia..." maxLength={255} />
+              </Campo>
+              <Campo etiqueta="Teléfono (opcional)">
+                <input className={campo} type="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="5555-5555" maxLength={30} />
+              </Campo>
+            </div>
+          )}
 
           <div className="space-y-3 border-t border-borde pt-3">
             {visibles.length === 0 && <p className="text-tenue">Todavía no hay platos en el pedido.</p>}
@@ -148,9 +192,17 @@ export default function NuevoPedido() {
             })}
           </div>
 
-          <div className="flex items-center justify-between border-t border-borde pt-3">
-            <span className="text-lg font-bold">Total</span>
-            <span className="text-2xl font-extrabold">{dinero(total)}</span>
+          <div className="border-t border-borde pt-3 space-y-1">
+            {tipo === 'domicilio' && (
+              <>
+                <div className="flex justify-between text-tenue"><span>Platos</span><span>{dinero(subtotal)}</span></div>
+                <div className="flex justify-between text-tenue"><span>Envío{zona ? ` (${ZONAS[zona].toLowerCase()})` : ''}</span><span>{zona ? dinero(costoEnvio) : 'Elige la zona'}</span></div>
+              </>
+            )}
+            <div className="flex items-center justify-between">
+              <span className="text-lg font-bold">Total</span>
+              <span className="text-2xl font-extrabold">{dinero(total)}</span>
+            </div>
           </div>
           <Aviso tipo="error">{error}</Aviso>
           <button className={`${btnPrimario} w-full h-12 text-lg`} disabled={enviando || visibles.length === 0} onClick={crear}>

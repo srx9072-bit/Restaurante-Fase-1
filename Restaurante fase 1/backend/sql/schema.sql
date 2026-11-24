@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS plato_ingredientes (
 -- ===== Fase 2: pedidos =====
 CREATE TABLE IF NOT EXISTS pedidos (
   id SERIAL PRIMARY KEY,
-  tipo VARCHAR(10) NOT NULL DEFAULT 'mesa' CHECK (tipo IN ('mesa', 'llevar')),
+  tipo VARCHAR(10) NOT NULL DEFAULT 'mesa' CHECK (tipo IN ('mesa', 'llevar', 'domicilio')),
   referencia VARCHAR(60),                      -- número de mesa o nombre de quien recoge
   cliente_id INT REFERENCES clientes(id) ON DELETE SET NULL,
   estado VARCHAR(12) NOT NULL DEFAULT 'pendiente'
@@ -96,3 +96,13 @@ CREATE TABLE IF NOT EXISTS pedido_items (
   cantidad INT NOT NULL CHECK (cantidad > 0),
   nota VARCHAR(255)
 );
+
+-- ===== Domicilio, pago en efectivo y recibo (estas líneas actualizan tablas que ya existían) =====
+ALTER TABLE pedidos DROP CONSTRAINT IF EXISTS pedidos_tipo_check;
+ALTER TABLE pedidos ADD CONSTRAINT pedidos_tipo_check CHECK (tipo IN ('mesa', 'llevar', 'domicilio'));
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS zona_envio VARCHAR(10) CHECK (zona_envio IN ('centrica', 'rural'));
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS costo_envio NUMERIC(10,2) NOT NULL DEFAULT 0;  -- ya incluido en total
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS direccion VARCHAR(255);
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS telefono VARCHAR(30);
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS recibido NUMERIC(10,2);   -- dinero que entregó el cliente (efectivo)
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS cambio NUMERIC(10,2);

@@ -5,3 +5,11 @@
 body { @apply bg-fondo text-tinta font-sans; }
 :focus-visible { outline: 3px solid #1E7A57; outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* El recibo se imprime solo: en pantalla está oculto y al imprimir se esconde el resto de la aplicación */
+.solo-impresion { display: none; }
+@media print {
+  #root { display: none !important; }
+  .solo-impresion { display: block !important; width: 76mm; color: #000; background: #fff; }
+  @page { margin: 6mm; }
+}

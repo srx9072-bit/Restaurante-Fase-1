@@ -68,3 +68,9 @@ export function Campo({ etiqueta, ayuda, children }) {
 
 export const dinero = (n) => `Q${Number(n).toFixed(2)}`;
 export const num = (n) => Number(n).toLocaleString('es-GT', { maximumFractionDigits: 2 });
+
+export const ZONAS = { centrica: 'Zona céntrica', rural: 'Zona rural' };
+export const METODOS_PAGO = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia' };
+export const fechaHora = (iso) => new Date(iso).toLocaleString('es-GT', {
+  timeZone: 'America/Guatemala', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+});
