@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, X } from 'lucide-react';
 import { api } from './api';
 import { Aviso, Campo, Modal, btnPeligro, btnPrimario, btnSecundario, campo } from './ui.jsx';
 
@@ -8,7 +8,10 @@ import { Aviso, Campo, Modal, btnPeligro, btnPrimario, btnSecundario, campo } fr
  * campos: [{ name, label, type, required, ayuda, ayudaEditar, soloCrear, opciones }]
  * columnas: [{ key, label, render? }]
  */
-export default function CrudPage({ titulo, intro, singular, endpoint, campos, columnas, puedeEscribir, acciones, vacio, cabecera }) {
+// Para buscar sin importar mayúsculas ni tildes ("tes" encuentra "Tés")
+const normal = (t) => String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+export default function CrudPage({ titulo, intro, singular, endpoint, campos, columnas, puedeEscribir, acciones, vacio, cabecera, buscarEn = ['nombre', 'telefono', 'email', 'contacto'] }) {
   const [filas, setFilas] = useState(null);
   const [error, setError] = useState('');
   const [aviso, setAviso] = useState('');
@@ -69,7 +72,19 @@ export default function CrudPage({ titulo, intro, singular, endpoint, campos, co
     } catch (err) { setError(err.message); setQuitando(null); }
   }
 
-  const lista = (filas || []).filter((f) => Object.values(f).join(' ').toLowerCase().includes(busca.toLowerCase()));
+  // Busca solo en el nombre (y teléfono/correo/contacto si existen). Primero los que empiezan con lo escrito.
+  const q = normal(busca);
+  const lista = !q ? (filas || []) : (filas || [])
+    .map((f) => {
+      const nombre = normal(f.nombre);
+      const palabraInicia = nombre.split(/\s+/).some((w) => w.startsWith(q));
+      const rango = nombre.startsWith(q) ? 0 : palabraInicia ? 1 : nombre.includes(q) ? 2
+        : buscarEn.some((k) => k !== 'nombre' && normal(f[k]).includes(q)) ? 3 : -1;
+      return { f, rango };
+    })
+    .filter((x) => x.rango >= 0)
+    .sort((a, b) => a.rango - b.rango)
+    .map((x) => x.f);
 
   return (
     <div className="space-y-5">
@@ -89,8 +104,16 @@ export default function CrudPage({ titulo, intro, singular, endpoint, campos, co
 
       <div className="relative">
         <Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-tenue" aria-hidden="true" />
-        <input className={`${campo} pl-10`} placeholder={`Buscar ${singular}`} aria-label={`Buscar ${singular}`} value={busca} onChange={(e) => setBusca(e.target.value)} />
+        <input className={`${campo} pl-10 pr-12`} placeholder={`Buscar ${singular} por nombre`} aria-label={`Buscar ${singular}`} value={busca}
+               onChange={(e) => setBusca(e.target.value)} onKeyDown={(e) => e.key === 'Escape' && setBusca('')} />
+        {busca && (
+          <button type="button" onClick={() => setBusca('')} aria-label="Borrar búsqueda"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-tenue hover:bg-fondo"><X size={20} /></button>
+        )}
       </div>
+      {busca && filas && (
+        <p className="text-tenue -mt-2" aria-live="polite">{lista.length === 1 ? '1 resultado' : `${lista.length} resultados`} para "{busca.trim()}"</p>
+      )}
 
       {!filas ? <p className="text-tenue">Cargando...</p> : lista.length === 0 ? (
         <div className="bg-white border border-borde rounded-xl p-8 text-center text-tenue">
