@@ -15,7 +15,6 @@ import pedidosRoutes from './routes/pedidos.js';
 import mesasRoutes from './routes/mesas.js';
 import cajaRoutes from './routes/caja.js';
 import reportesRoutes from './routes/reportes.js';
-import comprasRoutes from './routes/compras.js';
 import { sembrar } from './seed.js';
 
 if (!process.env.JWT_SECRET) {
@@ -36,7 +35,6 @@ app.use('/api/pedidos', pedidosRoutes);
 app.use('/api/mesas', mesasRoutes);
 app.use('/api/caja', cajaRoutes);
 app.use('/api/reportes', reportesRoutes);
-app.use('/api/compras', comprasRoutes);
 app.use('/api/proveedores', crudRouter({
   tabla: 'proveedores',
   campos: ['nombre', 'contacto', 'telefono', 'email', 'direccion'],
@@ -68,7 +66,14 @@ app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
 });
 
 await aplicarEsquema();
-if (process.env.CARGAR_DATOS_EJEMPLO === 'true') console.log(await sembrar());
+// REINICIAR_DATOS=true borra TODO (pedidos, cajas, inventario, usuarios...) y carga la carta de ejemplo.
+// Sirve para pasar la demo a la carta nueva. Quita la variable después del primer arranque.
+if (process.env.REINICIAR_DATOS === 'true') {
+  console.log(await sembrar({ reset: true }));
+  console.log('Datos reiniciados. Quita REINICIAR_DATOS de las variables de entorno para que no se borre todo en cada arranque.');
+} else if (process.env.CARGAR_DATOS_EJEMPLO === 'true') {
+  console.log(await sembrar());
+}
 
 // Recuperación: si defines NUEVA_CLAVE_ADMIN, esa pasa a ser la clave de admin@restaurante.com
 // (la crea si no existe). Quita la variable después de entrar, para que no se repita en cada arranque.

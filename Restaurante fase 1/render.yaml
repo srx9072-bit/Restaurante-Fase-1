@@ -24,9 +24,9 @@ services:
           property: connectionString
       - key: JWT_SECRET
         generateValue: true
-      - key: CARGAR_DATOS_EJEMPLO   # carga la carta de LESOFT la primera vez, cuando la base está vacía
+      - key: CARGAR_DATOS_EJEMPLO   # carga la carta de Coffee Lovers la primera vez, cuando la base está vacía
         value: "true"
       - key: CLAVE_INICIAL          # contraseña de los usuarios de ejemplo: la escribes tú al crear el servicio
         sync: false
       - key: VITE_NOMBRE_RESTAURANTE
-        value: LESOFT
+        value: "Coffee Lovers"

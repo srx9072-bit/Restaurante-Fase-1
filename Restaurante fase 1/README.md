@@ -14,7 +14,7 @@ createdb restaurante                 # o créala desde pgAdmin
 cd backend
 cp .env.example .env                 # edita DB_PASSWORD y JWT_SECRET
 npm install
-npm run seed                         # crea las tablas y carga la carta de LESOFT y usuarios de ejemplo
+npm run seed                         # crea las tablas y carga la carta de Coffee Lovers y usuarios de ejemplo
                                      # si ya había datos: npm run seed -- --reset
 npm run dev                          # http://localhost:3001
 
@@ -51,7 +51,7 @@ Si el sistema pasa a producción con un restaurante real, hay que subir ambos a 
 
 ## Datos de ejemplo
 
-La carta es la de LESOFT (restaurante de prueba). Los ingredientes y las cantidades de cada receta son **estimados**: hay que ajustarlos con la cocina real. Para otro restaurante, cambia los datos en `backend/src/seed.js` o cárgalos desde las pantallas de Inventario y Platos.
+La carta es la de Coffee Lovers. Los precios son los de su carta; el stock, los proveedores, los ingredientes y las cantidades de cada receta son **estimados**: hay que ajustarlos con la cocina real. Para otro restaurante, cambia los datos en `backend/src/seed.js` o cárgalos desde las pantallas de Inventario y Platos.
 
 ## Cómo funciona la disponibilidad
 
@@ -88,3 +88,17 @@ render.yaml  Despliegue en Render
 backend/     API (rutas en src/routes, esquema en sql/schema.sql)
 frontend/    Interfaz (páginas en src/paginas)
 ```
+
+## Usuarios de ejemplo y PIN
+
+| Usuario | Correo | Clave | PIN |
+|---|---|---|---|
+| Administrador | admin@restaurante.com | admin123 (o CLAVE_INICIAL) | 1111 |
+| Caja | caja@restaurante.com | caja123 (o CLAVE_INICIAL) | 2222 |
+| Cocina | cocina@restaurante.com | cocina123 (o CLAVE_INICIAL) | 3333 |
+
+El PIN solo funciona en un equipo donde el administrador ya entró con su correo y contraseña. Cámbialos en **Usuarios** antes de entregar el sistema.
+
+## Pasar una base existente a la carta nueva
+
+En Render agrega la variable `REINICIAR_DATOS=true` y guarda (el servicio se reinicia). Eso **borra todo** (pedidos, cajas, inventario, usuarios) y carga la carta de ejemplo. Cuando arranque, quita la variable.

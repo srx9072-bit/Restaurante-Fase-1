@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Coffee, Delete, Eye, EyeOff, KeyRound, LogIn } from 'lucide-react';
+import { Delete, Eye, EyeOff, KeyRound, LogIn } from 'lucide-react';
 import { useAuth } from '../auth.jsx';
 import { Aviso, Campo, NOMBRE, btnPrimario, campo } from '../ui.jsx';
 
@@ -106,8 +106,8 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-cafe-espresso">
       <div className="w-full max-w-sm bg-fondo rounded-3xl p-7 space-y-5 shadow-2xl">
         <div className="text-center">
-          <span className="mx-auto mb-3 grid place-items-center w-14 h-14 rounded-2xl bg-cafe text-white"><Coffee size={28} aria-hidden="true" /></span>
-          <h1 className="text-3xl font-bold">{NOMBRE}</h1>
+          <img src="/logo.jpg" alt={NOMBRE} className="mx-auto mb-2 w-40 h-40 rounded-3xl object-cover shadow-md" />
+          <h1 className="sr-only">{NOMBRE}</h1>
           {!pin && <p className="text-tenue">Bienvenido, ingresa para empezar el día.</p>}
         </div>
         {pin
