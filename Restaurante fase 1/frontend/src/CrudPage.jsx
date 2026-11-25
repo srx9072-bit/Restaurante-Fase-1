@@ -8,7 +8,7 @@ import { Aviso, Campo, Modal, btnPeligro, btnPrimario, btnSecundario, campo } fr
  * campos: [{ name, label, type, required, ayuda, ayudaEditar, soloCrear, opciones }]
  * columnas: [{ key, label, render? }]
  */
-export default function CrudPage({ titulo, intro, singular, endpoint, campos, columnas, puedeEscribir, acciones, vacio }) {
+export default function CrudPage({ titulo, intro, singular, endpoint, campos, columnas, puedeEscribir, acciones, vacio, cabecera }) {
   const [filas, setFilas] = useState(null);
   const [error, setError] = useState('');
   const [aviso, setAviso] = useState('');
@@ -78,7 +78,10 @@ export default function CrudPage({ titulo, intro, singular, endpoint, campos, co
           <h2 className="text-3xl font-bold">{titulo}</h2>
           {intro && <p className="text-tenue text-lg">{intro}</p>}
         </div>
-        {puedeEscribir && <button className={btnPrimario} onClick={abrirNuevo}><Plus size={20} aria-hidden="true" /> Nuevo {singular}</button>}
+        <div className="flex flex-wrap gap-2">
+          {cabecera && filas && cabecera({ filas, recargar: cargar, avisar: setAviso })}
+          {puedeEscribir && <button className={btnPrimario} onClick={abrirNuevo}><Plus size={20} aria-hidden="true" /> Nuevo {singular}</button>}
+        </div>
       </div>
 
       <Aviso>{aviso}</Aviso>

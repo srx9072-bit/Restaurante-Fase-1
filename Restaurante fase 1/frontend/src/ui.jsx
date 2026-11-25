@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { X, CheckCircle2, AlertTriangle, XCircle, Circle } from 'lucide-react';
 
-export const NOMBRE = import.meta.env.VITE_NOMBRE_RESTAURANTE || 'Mi restaurante';
+export const NOMBRE = import.meta.env.VITE_NOMBRE_RESTAURANTE || 'Coffee Lovers';
 
 const base = 'inline-flex items-center justify-center gap-2 rounded-xl px-4 h-11 font-bold transition-colors disabled:opacity-50';
 export const btnPrimario = `${base} bg-cafe text-white hover:bg-cafe-oscuro`;

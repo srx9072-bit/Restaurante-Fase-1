@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { PackagePlus } from 'lucide-react';
 import { api } from '../api';
 import CrudPage from '../CrudPage.jsx';
+import ConteoRapido from '../ConteoRapido.jsx';
 import { useAuth } from '../auth.jsx';
 import { Aviso, Campo, Etiqueta, Modal, btnPrimario, btnSecundario, campo, dinero, num } from '../ui.jsx';
 
@@ -87,6 +88,8 @@ export default function Inventario() {
       intro="Los ingredientes que tienes. Cuando uno se acaba, los platos que lo usan se marcan como no disponibles."
       puedeEscribir={usuario.rol === 'admin'}
       vacio="Aún no hay insumos. Agrega tus ingredientes y cuánto tienes de cada uno."
+      cabecera={({ filas, avisar, recargar }) => ['admin', 'cocina'].includes(usuario.rol) &&
+        <ConteoRapido insumos={filas} esAdmin={esAdmin} onHecho={(m) => { avisar(m); recargar(); }} />}
       acciones={(f, { avisar, recargar }) =>
         ['admin', 'cocina'].includes(usuario.rol) && <AjusteStock insumo={f} onHecho={(m) => { avisar(m); recargar(); }} />}
       campos={[

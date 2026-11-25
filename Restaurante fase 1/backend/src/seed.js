@@ -147,7 +147,7 @@ const USUARIOS = [
 
 export async function sembrar({ reset = false } = {}) {
   if (reset) {
-    await pool.query('TRUNCATE pedido_items, pedidos, caja_movimientos, plato_ingredientes, movimientos_inventario, platos, insumos, clientes, proveedores, usuarios, mesas, cajas RESTART IDENTITY CASCADE');
+    await pool.query('TRUNCATE compra_items, compras, pedido_items, pedidos, caja_movimientos, plato_ingredientes, movimientos_inventario, platos, insumos, clientes, proveedores, usuarios, mesas, cajas RESTART IDENTITY CASCADE');
   } else {
     const { rows } = await pool.query('SELECT COUNT(*) AS total FROM usuarios');
     if (rows[0].total > 0) return 'La base de datos ya tiene datos. Usa "npm run seed -- --reset" para borrar todo y recargar.';

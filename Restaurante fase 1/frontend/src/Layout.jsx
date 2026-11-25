@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { ClipboardList, UtensilsCrossed, Package, BookOpen, Truck, Users, ShieldCheck, LogOut, Armchair, Wallet, TrendingUp, UserRoundCog } from 'lucide-react';
+import { ClipboardList, UtensilsCrossed, Package, BookOpen, Truck, Users, ShieldCheck, LogOut, Armchair, Wallet, TrendingUp, UserRoundCog, ShoppingCart } from 'lucide-react';
 import { useAuth } from './auth.jsx';
 import { Modal, NOMBRE, btnPrimario, btnSecundario } from './ui.jsx';
 
@@ -11,6 +11,7 @@ const ENLACES = [
   { a: '/caja', texto: 'Caja', icono: Wallet, roles: ['admin', 'cajero'] },
   { a: '/reportes', texto: 'Reportes', icono: TrendingUp, roles: ['admin'] },
   { a: '/inventario', texto: 'Inventario', icono: Package },
+  { a: '/compras', texto: 'Compras', icono: ShoppingCart, roles: ['admin'] },
   { a: '/platos', texto: 'Platos y recetas', corto: 'Platos', icono: BookOpen, roles: ['admin'] },
   { a: '/proveedores', texto: 'Proveedores', icono: Truck },
   { a: '/clientes', texto: 'Clientes', icono: Users },

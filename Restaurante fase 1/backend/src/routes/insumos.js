@@ -39,4 +39,49 @@ r.post('/:id/movimiento', roles('admin', 'cocina'), asyncH(async (req, res) => {
   res.json({ stock: nuevo });
 }));
 
+// Conteo rápido: deja varios ingredientes con la cantidad real de una sola vez.
+// filas: [{ insumo_id, stock }] para los que ya existen, o [{ nombre, unidad, stock }] para crear uno nuevo.
+r.post('/conteo', roles('admin', 'cocina'), asyncH(async (req, res) => {
+  const filas = Array.isArray(req.body.filas) ? req.body.filas : [];
+  if (filas.length === 0) throw falla(400, 'No hay nada que guardar.');
+  if (filas.length > 500) throw falla(400, 'Son demasiadas líneas. Guárdalas en partes.');
+  const nota = String(req.body.nota || '').trim().slice(0, 255) || 'Conteo rápido';
+  const vistos = new Set();
+  for (const f of filas) {
+    const stock = Number(f.stock);
+    if (!Number.isFinite(stock) || stock < 0) throw falla(400, `Revisa la cantidad de "${f.nombre || 'una línea'}".`);
+    if (f.insumo_id) {
+      if (vistos.has(Number(f.insumo_id))) throw falla(400, 'Hay dos líneas para el mismo ingrediente. Júntalas en una.');
+      vistos.add(Number(f.insumo_id));
+    } else {
+      if (req.usuario.rol !== 'admin') throw falla(403, 'Solo el administrador puede crear ingredientes nuevos.');
+      if (!String(f.nombre || '').trim()) throw falla(400, 'A un ingrediente nuevo le falta el nombre.');
+      if (!String(f.unidad || '').trim()) throw falla(400, `Elige cómo se mide "${f.nombre}".`);
+    }
+  }
+
+  const resultado = await conTransaccion(async (db) => {
+    let actualizados = 0, creados = 0;
+    for (const f of filas) {
+      const stock = Math.round(Number(f.stock) * 100) / 100;
+      let id = Number(f.insumo_id) || null;
+      if (id) {
+        const { rowCount } = await db.query('UPDATE insumos SET stock = $1 WHERE id = $2 AND activo = TRUE', [stock, id]);
+        if (!rowCount) throw falla(404, 'Uno de los ingredientes ya no existe. Recarga la página.');
+        actualizados++;
+      } else {
+        const { rows: [n] } = await db.query(
+          'INSERT INTO insumos (nombre, unidad, stock) VALUES ($1, $2, $3) RETURNING id',
+          [String(f.nombre).trim().slice(0, 120), String(f.unidad).trim().slice(0, 20), stock]);
+        id = n.id; creados++;
+      }
+      await db.query(
+        `INSERT INTO movimientos_inventario (insumo_id, tipo, cantidad, stock_resultante, nota, usuario_id)
+         VALUES ($1, 'ajuste', $2, $2, $3, $4)`, [id, stock, nota, req.usuario.id]);
+    }
+    return { actualizados, creados };
+  });
+  res.json(resultado);
+}));
+
 export default r;
