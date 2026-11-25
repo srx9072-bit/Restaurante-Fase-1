@@ -15,6 +15,7 @@ import pedidosRoutes from './routes/pedidos.js';
 import mesasRoutes from './routes/mesas.js';
 import cajaRoutes from './routes/caja.js';
 import reportesRoutes from './routes/reportes.js';
+import comprasRoutes from './routes/compras.js';
 import { sembrar } from './seed.js';
 
 if (!process.env.JWT_SECRET) {
@@ -35,6 +36,7 @@ app.use('/api/pedidos', pedidosRoutes);
 app.use('/api/mesas', mesasRoutes);
 app.use('/api/caja', cajaRoutes);
 app.use('/api/reportes', reportesRoutes);
+app.use('/api/compras', comprasRoutes);
 app.use('/api/proveedores', crudRouter({
   tabla: 'proveedores',
   campos: ['nombre', 'contacto', 'telefono', 'email', 'direccion'],

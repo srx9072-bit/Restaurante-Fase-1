@@ -14,6 +14,7 @@ import Mesas from './paginas/Mesas.jsx';
 import MesasConfig from './paginas/MesasConfig.jsx';
 import Caja from './paginas/Caja.jsx';
 import Reportes from './paginas/Reportes.jsx';
+import Compras from './paginas/Compras.jsx';
 
 const Solo = ({ roles, children }) => {
   const { usuario } = useAuth();
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="mesas" element={<Mesas />} />
         <Route path="mesas/configurar" element={<Solo roles={['admin']}><MesasConfig /></Solo>} />
         <Route path="caja" element={<Solo roles={['admin', 'cajero']}><Caja /></Solo>} />
+        <Route path="compras" element={<Solo roles={['admin']}><Compras /></Solo>} />
         <Route path="reportes" element={<Solo roles={['admin']}><Reportes /></Solo>} />
         <Route path="pedidos" element={<Pedidos />} />
         <Route path="pedidos/nuevo" element={<Solo roles={['admin', 'cajero']}><NuevoPedido /></Solo>} />

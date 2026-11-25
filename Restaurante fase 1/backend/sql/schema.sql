@@ -149,3 +149,26 @@ ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS caja_id INT REFERENCES cajas(id) ON
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS pin_hash VARCHAR(255);           -- PIN de 4 dígitos (cifrado)
 ALTER TABLE insumos ADD COLUMN IF NOT EXISTS costo NUMERIC(12,4) NOT NULL DEFAULT 0;  -- lo que cuesta 1 unidad de medida (Q por lb, por litro...)
 ALTER TABLE pedido_items ADD COLUMN IF NOT EXISTS costo NUMERIC(12,4);         -- costo de ingredientes de 1 porción el día del pedido
+
+-- ===== Compras a proveedores: al confirmar, suman al inventario y actualizan el costo de cada insumo =====
+CREATE TABLE IF NOT EXISTS compras (
+  id SERIAL PRIMARY KEY,
+  proveedor_id INT REFERENCES proveedores(id) ON DELETE SET NULL,
+  total NUMERIC(12,2) NOT NULL DEFAULT 0,
+  notas VARCHAR(255),                 -- número de factura, referencia...
+  usuario_id INT REFERENCES usuarios(id) ON DELETE SET NULL,
+  creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS compras_creado_idx ON compras (creado_en);
+
+-- Cada línea guarda nombre, unidad y costo del momento, así la compra no cambia si después se edita el insumo
+CREATE TABLE IF NOT EXISTS compra_items (
+  id SERIAL PRIMARY KEY,
+  compra_id INT NOT NULL REFERENCES compras(id) ON DELETE CASCADE,
+  insumo_id INT REFERENCES insumos(id) ON DELETE SET NULL,
+  nombre VARCHAR(120) NOT NULL,
+  unidad VARCHAR(20) NOT NULL,
+  cantidad NUMERIC(12,2) NOT NULL CHECK (cantidad > 0),
+  costo_unitario NUMERIC(12,4) NOT NULL CHECK (costo_unitario >= 0),
+  subtotal NUMERIC(12,2) NOT NULL
+);
